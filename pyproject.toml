@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pgsi-analyzer"
+version = "1.0.0"
+description = "A comprehensive benchmarking and analysis tool for comparing energy consumption, execution time, and carbon footprint of Python execution methods using GreenScore metric"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Md Fatin Shadab Turja"},
+]
+maintainers = [
+    {name = "Md Fatin Shadab Turja"}
+]
+keywords = [
+    "python",
+    "energy-efficiency",
+    "sustainability",
+    "benchmarking",
+    "software-performance",
+    "green-software",
+    "carbon-emissions",
+    "energy-consumption",
+    "greenscore",
+    "cpython",
+    "pypy",
+    "cython",
+    "ctypes",
+    "py-compile"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Benchmark",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Environment :: Console"
+]
+
+dependencies = [
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
+    "numpy>=1.24.0",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+energy = [
+    "pyRAPL>=0.2.3; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+analysis = [
+    "scipy>=1.10.0",
+    "statsmodels>=0.14.0",
+]
+all = [
+    "pgsi-analyzer[energy,analysis]",
+]
+
+[project.scripts]
+pgsi-analyzer = "pgsi_analyzer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/FatinShadab/python-energy-microscope"
+Documentation = "https://github.com/FatinShadab/python-energy-microscope"
+Repository = "https://github.com/FatinShadab/python-energy-microscope"
+Issues = "https://github.com/FatinShadab/python-energy-microscope/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"pgsi_analyzer" = ["config/*.json", "config/*.yaml"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+src_paths = ["src", "tests"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
