@@ -10,6 +10,8 @@ import pandas as pd
 from pathlib import Path
 from typing import Union, Optional
 
+from ..utils import validate_dataframe, validate_weights, AnalysisError
+
 
 def normalize_metrics(df: pd.DataFrame, output_path: Optional[Union[str, Path]] = None) -> pd.DataFrame:
     """
@@ -102,11 +104,12 @@ def calculate_greenscore(
         >>> carbon_df = pd.read_csv('carbon.csv')
         >>> ranking = calculate_greenscore(energy_df, time_df, carbon_df)
     """
-    # Validate weights sum to 1.0
-    if abs(alpha + beta + gamma - 1.0) > 1e-6:
-        raise ValueError(f"Weights must sum to 1.0, got: alpha={alpha}, beta={beta}, gamma={gamma}")
+    validate_weights(alpha, beta, gamma)
     
     # Step 1: Normalize each DataFrame
+    validate_dataframe(energy_df, ["algorithm"])
+    validate_dataframe(time_df, ["algorithm"])
+    validate_dataframe(carbon_df, ["algorithm"])
     energy_norm = normalize_metrics(energy_df)
     time_norm = normalize_metrics(time_df)
     carbon_norm = normalize_metrics(carbon_df)

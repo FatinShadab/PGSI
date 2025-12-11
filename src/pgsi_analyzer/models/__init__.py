@@ -12,6 +12,12 @@ from .carbon import calculate_carbon_footprint
 from .greenscore import calculate_greenscore, normalize_metrics
 from .aggregation import aggregate_energy, aggregate_time
 from .combination import combine_energy_results, combine_time_results
+from .statistics import (
+    calculate_standard_deviation,
+    perform_statistical_tests,
+    oneway_anova_greenscore,
+    load_csv,
+)
 
 __all__ = [
     "calculate_carbon_footprint",
@@ -21,4 +27,8 @@ __all__ = [
     "aggregate_time",
     "combine_energy_results",
     "combine_time_results",
+    "calculate_standard_deviation",
+    "perform_statistical_tests",
+    "oneway_anova_greenscore",
+    "load_csv",
 ]

@@ -14,6 +14,7 @@ from typing import Callable, Union
 from datetime import datetime
 
 from ..platform.hardware import get_system_info
+from ..utils import MeasurementError, ConfigurationError
 
 
 def measure_time_to_csv(
@@ -42,6 +43,10 @@ def measure_time_to_csv(
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            if n <= 0:
+                raise MeasurementError("n must be greater than 0")
+            if not csv_filename:
+                raise ConfigurationError("csv_filename must be provided")
             # Convert folder_name to Path if it's a string
             folder_path = Path(folder_name) if isinstance(folder_name, str) else folder_name
             
@@ -75,11 +80,14 @@ def measure_time_to_csv(
 
                 # Run the function n times and log execution time
                 for i in range(1, n + 1):
-                    start_time = time.time()
-                    result = func(*args, **kwargs)
-                    end_time = time.time()
+                    try:
+                        start_time = time.time()
+                        result = func(*args, **kwargs)
+                        end_time = time.time()
 
-                    execution_time = end_time - start_time
+                        execution_time = end_time - start_time
+                    except Exception as exc:  # pragma: no cover - defensive
+                        raise MeasurementError(f"Time measurement failed: {exc}") from exc
 
                     writer.writerow([
                         datetime.now().isoformat(),

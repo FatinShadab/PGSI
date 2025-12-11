@@ -118,12 +118,36 @@ This was the **lowest score**, confirming `ctypes` as the greenest Python method
 ```
 
 
-## Getting Started
+## Getting Started (Package)
 
 ```bash
-git clone [https://github.com/FatinShadab/python-energy-microscope.git](https://github.com/FatinShadab/python-energy-microscope.git)
-cd python-energy-microscope
-python3 run_benchmarks.py
+pip install pgsi-analyzer
+```
+
+Quick start:
+
+```python
+from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
+from pgsi_analyzer.models import calculate_carbon_footprint, calculate_greenscore
+
+@measure_energy_to_csv(n=5, csv_filename="demo_energy")
+def work():
+    return sum(range(1000))
+
+work()
+
+# Compute carbon & greenscore
+carbon = calculate_carbon_footprint("energy_com.csv")
+greenscore = calculate_greenscore(
+    energy_df, time_df, carbon_df, alpha=0.4, beta=0.4, gamma=0.2
+)
+```
+
+CLI:
+
+```bash
+pgsi-analyzer --help
+pgsi-analyzer evcvt data.csv -o chart.png
 ```
 
 ## Citation

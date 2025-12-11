@@ -18,6 +18,10 @@ from datetime import datetime
 
 from ..platform.hardware import get_system_info, get_cpu_info
 from ..platform.detection import is_linux_intel, detect_platform
+from ..utils import (
+    MeasurementError,
+    ConfigurationError,
+)
 from .estimators import estimate_energy
 
 
@@ -67,6 +71,10 @@ def measure_energy_to_csv(
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            if n <= 0:
+                raise MeasurementError("n must be greater than 0")
+            if not csv_filename:
+                raise ConfigurationError("csv_filename must be provided")
             # Convert folder_name to Path if it's a string
             folder_path = Path(folder_name) if isinstance(folder_name, str) else folder_name
             
@@ -128,48 +136,49 @@ def measure_energy_to_csv(
                 # Run the function n times and log energy usage
                 estimation_model = None
                 for i in range(1, n + 1):
-                    if use_hardware:
-                        # Use pyRAPL for hardware-based measurement
-                        measurement = pyRAPL.Measurement(label=f"{func.__name__}_run_{i}")
-                        measurement.begin()
-                        result = func(*args, **kwargs)
-                        measurement.end()
+                    try:
+                        if use_hardware:
+                            # Use pyRAPL for hardware-based measurement
+                            measurement = pyRAPL.Measurement(label=f"{func.__name__}_run_{i}")
+                            measurement.begin()
+                            result = func(*args, **kwargs)
+                            measurement.end()
 
-                        package_energy = measurement.result.pkg[0]
-                        dram_energy = measurement.result.dram[0] if measurement.result.dram else 0
-                        method = 'hardware'
-                    else:
-                        # Use estimation for non-Linux platforms
-                        # Measure CPU time
-                        start_cpu_time = time.process_time()
-                        start_wall_time = time.time()
-                        result = func(*args, **kwargs)
-                        end_cpu_time = time.process_time()
-                        end_wall_time = time.time()
-                        
-                        cpu_time = end_cpu_time - start_cpu_time
-                        wall_time = end_wall_time - start_wall_time
-                        
-                        # Use CPU time for estimation (more accurate for CPU-bound tasks)
-                        estimated_energy, estimation_model = estimate_energy(
-                            cpu_time,
-                            cpu_info
-                        )
-                        
-                        package_energy = estimated_energy
-                        dram_energy = 0  # DRAM estimation not implemented
-                        method = 'estimation'
-                        
-                        # Update system info with estimation model on first run
-                        if i == 1 and estimation_model:
-                            system_info = get_system_info(result_file_path)
-                            system_info['measurement_method'] = 'estimation'
-                            system_info['platform'] = detect_platform()
-                            system_info['estimation_model'] = estimation_model
-                            system_info_path.write_text(
-                                json.dumps(system_info, indent=4),
-                                encoding='utf-8'
+                            package_energy = measurement.result.pkg[0]
+                            dram_energy = measurement.result.dram[0] if measurement.result.dram else 0
+                            method = 'hardware'
+                        else:
+                            # Use estimation for non-Linux platforms
+                            start_cpu_time = time.process_time()
+                            start_wall_time = time.time()
+                            result = func(*args, **kwargs)
+                            end_cpu_time = time.process_time()
+                            end_wall_time = time.time()
+                            
+                            cpu_time = end_cpu_time - start_cpu_time
+                            wall_time = end_wall_time - start_wall_time
+                            
+                            estimated_energy, estimation_model = estimate_energy(
+                                cpu_time,
+                                cpu_info
                             )
+                            
+                            package_energy = estimated_energy
+                            dram_energy = 0  # DRAM estimation not implemented
+                            method = 'estimation'
+                            
+                            # Update system info with estimation model on first run
+                            if i == 1 and estimation_model:
+                                system_info = get_system_info(result_file_path)
+                                system_info['measurement_method'] = 'estimation'
+                                system_info['platform'] = detect_platform()
+                                system_info['estimation_model'] = estimation_model
+                                system_info_path.write_text(
+                                    json.dumps(system_info, indent=4),
+                                    encoding='utf-8'
+                                )
+                    except Exception as exc:  # pragma: no cover - defensive
+                        raise MeasurementError(f"Energy measurement failed: {exc}") from exc
 
                     writer.writerow([
                         datetime.now().isoformat(),

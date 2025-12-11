@@ -18,6 +18,12 @@ from .visualization import (
     plot_method_metric_line_chart,
 )
 from ..platform.paths import resolve_data_path
+from ..utils import validate_file_path, PGSIAnalyzerError
+from ..models.statistics import (
+    load_csv,
+    perform_statistical_tests,
+    oneway_anova_greenscore,
+)
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -101,6 +107,16 @@ Examples:
     )
     etc_compare_parser.add_argument('csv_file', type=str, help='Path to CSV file with method metrics')
     etc_compare_parser.add_argument('-o', '--output', type=str, help='Output image path')
+
+    # statistics: basic statistical tests
+    stats_parser = subparsers.add_parser(
+        'statistics',
+        help='Run basic statistical analysis (ANOVA) on results'
+    )
+    stats_parser.add_argument('--energy', type=str, help='Energy comparison CSV (algorithm columns)')
+    stats_parser.add_argument('--time', type=str, help='Time comparison CSV (algorithm columns)')
+    stats_parser.add_argument('--carbon', type=str, help='Carbon comparison CSV (algorithm columns)')
+    stats_parser.add_argument('--greenscore', type=str, help='Greenscore CSV with columns method,green_score')
     
     # Parse arguments
     args = parser.parse_args(argv)
@@ -112,14 +128,8 @@ Examples:
     
     try:
         if args.command == 'evcvt':
-            csv_path = Path(args.csv_file)
-            if not csv_path.exists():
-                print(f"❌ Error: CSV file not found: {csv_path}")
-                return 1
-            
-            output_path = Path(args.output) if args.output else None
-            if output_path is None:
-                output_path = csv_path.parent / f"{csv_path.stem}_evcvt.png"
+            csv_path = validate_file_path(args.csv_file, must_exist=True)
+            output_path = Path(args.output) if args.output else csv_path.parent / f"{csv_path.stem}_evcvt.png"
             
             metrics = ["energy_mean_μJ", "time_mean_s", "carbon_mean_gCO2eq"]
             generate_grouped_bar_chart(
@@ -132,19 +142,9 @@ Examples:
             )
             
         elif args.command == 'lcpack':
-            energy_path = Path(args.energy)
-            time_path = Path(args.time)
-            carbon_path = Path(args.carbon)
-            
-            if not energy_path.exists():
-                print(f"❌ Error: Energy file not found: {energy_path}")
-                return 1
-            if not time_path.exists():
-                print(f"❌ Error: Time file not found: {time_path}")
-                return 1
-            if not carbon_path.exists():
-                print(f"❌ Error: Carbon file not found: {carbon_path}")
-                return 1
+            energy_path = validate_file_path(args.energy, must_exist=True)
+            time_path = validate_file_path(args.time, must_exist=True)
+            carbon_path = validate_file_path(args.carbon, must_exist=True)
             
             output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -174,15 +174,8 @@ Examples:
             )
             
         elif args.command == 'scatter':
-            energy_path = Path(args.energy_csv)
-            time_path = Path(args.time_csv)
-            
-            if not energy_path.exists():
-                print(f"❌ Error: Energy file not found: {energy_path}")
-                return 1
-            if not time_path.exists():
-                print(f"❌ Error: Time file not found: {time_path}")
-                return 1
+            energy_path = validate_file_path(args.energy_csv, must_exist=True)
+            time_path = validate_file_path(args.time_csv, must_exist=True)
             
             output_path = Path(args.output) if args.output else Path.cwd() / "scatter_energy_vs_time.png"
             
@@ -193,15 +186,8 @@ Examples:
             )
             
         elif args.command == 'line-compare':
-            energy_path = Path(args.energy_csv)
-            time_path = Path(args.time_csv)
-            
-            if not energy_path.exists():
-                print(f"❌ Error: Energy file not found: {energy_path}")
-                return 1
-            if not time_path.exists():
-                print(f"❌ Error: Time file not found: {time_path}")
-                return 1
+            energy_path = validate_file_path(args.energy_csv, must_exist=True)
+            time_path = validate_file_path(args.time_csv, must_exist=True)
             
             output_path = Path(args.output) if args.output else Path.cwd() / "line_energy_vs_time_trends.png"
             
@@ -212,10 +198,7 @@ Examples:
             )
             
         elif args.command == 'etc-compare':
-            csv_path = Path(args.csv_file)
-            if not csv_path.exists():
-                print(f"❌ Error: CSV file not found: {csv_path}")
-                return 1
+            csv_path = validate_file_path(args.csv_file, must_exist=True)
             
             output_path = Path(args.output) if args.output else Path.cwd() / "method_metric_comparison_linechart.png"
             
@@ -223,11 +206,32 @@ Examples:
                 csv_file=csv_path,
                 output_file=output_path
             )
+
+        elif args.command == 'statistics':
+            results = {}
+            if args.energy and args.time and args.carbon:
+                energy_df = load_csv(args.energy)
+                time_df = load_csv(args.time)
+                carbon_df = load_csv(args.carbon)
+                results["anova_energy_time_carbon"] = perform_statistical_tests(
+                    energy_df, time_df, carbon_df
+                )
+            if args.greenscore:
+                gs_df = load_csv(args.greenscore)
+                results["anova_greenscore"] = oneway_anova_greenscore(gs_df)
+            if not results:
+                print("ℹ️ Provide --energy/--time/--carbon and/or --greenscore for analysis.")
+                return 1
+            for key, value in results.items():
+                print(f"{key}: {value}")
         
         return 0
         
+    except PGSIAnalyzerError as e:
+        print(f"❌ {e}")
+        return 1
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Unexpected error: {e}")
         return 1
 
 
