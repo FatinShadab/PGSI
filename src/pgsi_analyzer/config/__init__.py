@@ -6,7 +6,7 @@ Provides access to default benchmark parameters and config path helpers.
 from pathlib import Path
 from typing import Dict, Any
 
-from .defaults import DEFAULT_PARAMS, get_default_params
+from .defaults import DEFAULT_PARAMS, get_default_params, DNA_ENV_VAR
 from ..platform.paths import resolve_data_path
 
 
@@ -23,6 +23,7 @@ __all__ = [
     "DEFAULT_PARAMS",
     "get_default_params",
     "resolve_config_path",
+    "DNA_ENV_VAR",
 ]
 
 # Backwards-compatibility alias for legacy callers that referenced __default__

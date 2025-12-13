@@ -50,7 +50,13 @@ def _resolve_dna_path() -> Path:
 
 
 def _build_defaults() -> Dict[str, Any]:
-    dna_path = _resolve_dna_path()
+    try:
+        dna_path = _resolve_dna_path()
+    except FileNotFoundError:
+        # If DNA file is not found, use a placeholder path
+        # This allows the module to load even if DNA file is missing
+        # The actual error will be raised when K_Nucleotide algorithm is used
+        dna_path = Path("/placeholder/dna.txt")
 
     return {
         "hanoi": {
