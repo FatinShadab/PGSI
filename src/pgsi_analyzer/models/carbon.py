@@ -9,8 +9,6 @@ import pandas as pd
 from pathlib import Path
 from typing import Union, Optional
 
-from ..utils import validate_dataframe, validate_file_path, AnalysisError
-
 
 def calculate_carbon_footprint(
     energy_csv_path: Union[str, Path],
@@ -43,11 +41,16 @@ def calculate_carbon_footprint(
         >>> df = calculate_carbon_footprint('energy.csv', output_path='carbon.csv')
     """
     # Convert to Path if string
-    energy_path = validate_file_path(energy_csv_path, must_exist=True)
-
+    energy_path = Path(energy_csv_path) if isinstance(energy_csv_path, str) else energy_csv_path
+    
+    if not energy_path.exists():
+        raise FileNotFoundError(f"Energy CSV file not found: {energy_path}")
+    
     # Read energy data
     energy_df = pd.read_csv(energy_path)
-    validate_dataframe(energy_df, ["algorithm"])
+    
+    if 'algorithm' not in energy_df.columns:
+        raise ValueError("CSV must contain an 'algorithm' column")
     
     # Create carbon footprint DataFrame
     carbon_df = pd.DataFrame()

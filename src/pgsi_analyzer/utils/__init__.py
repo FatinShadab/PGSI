@@ -1,6 +1,10 @@
 """
 Utilities module for shared helper functions.
+
+This module provides validation, error handling, and other utility functions
+used throughout the package.
 """
+
 from .validation import (
     validate_file_path,
     validate_dataframe,
@@ -28,3 +32,4 @@ __all__ = [
     "PlatformError",
     "ConfigurationError",
 ]
+

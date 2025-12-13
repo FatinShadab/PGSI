@@ -65,11 +65,6 @@ analysis = [
     "scipy>=1.10.0",
     "statsmodels>=0.14.0",
 ]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-mock>=3.10.0",
-]
 all = [
     "pgsi-analyzer[energy,analysis]",
 ]
@@ -91,6 +86,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "pgsi_analyzer" = ["config/*.json", "config/*.yaml"]
+"pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py"]
 
 [tool.black]
 line-length = 100

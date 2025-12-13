@@ -10,8 +10,6 @@ from pathlib import Path
 from typing import Union, List
 from collections import defaultdict
 
-from ..utils import validate_file_path, AnalysisError
-
 
 def extract_algorithm_name(full_name: str) -> str:
     """
@@ -64,7 +62,10 @@ def combine_energy_results(
     
     for file_path in file_paths:
         # Convert to Path if string
-        path = validate_file_path(file_path, must_exist=True)
+        path = Path(file_path) if isinstance(file_path, str) else file_path
+        
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
         
         # Extract method name from parent directory
         method_name = path.parent.name
@@ -73,7 +74,7 @@ def combine_energy_results(
         df = pd.read_csv(path)
         
         if 'filename' not in df.columns or 'average_package (uJ)' not in df.columns:
-            raise AnalysisError(f"CSV must contain 'filename' and 'average_package (uJ)' columns: {path}")
+            raise ValueError(f"CSV must contain 'filename' and 'average_package (uJ)' columns: {path}")
         
         # Process each row
         for _, row in df.iterrows():
@@ -87,7 +88,7 @@ def combine_energy_results(
                 continue
     
     if not energy_data:
-        raise AnalysisError("No valid energy data found in input files")
+        raise ValueError("No valid energy data found in input files")
     
     # Get all unique methods
     all_methods = sorted({method for algo_data in energy_data.values() for method in algo_data})
@@ -141,7 +142,10 @@ def combine_time_results(
     
     for file_path in file_paths:
         # Convert to Path if string
-        path = validate_file_path(file_path, must_exist=True)
+        path = Path(file_path) if isinstance(file_path, str) else file_path
+        
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
         
         # Extract method name from parent directory
         method_name = path.parent.name
@@ -150,7 +154,7 @@ def combine_time_results(
         df = pd.read_csv(path)
         
         if 'filename' not in df.columns or 'execution_time (s)' not in df.columns:
-            raise AnalysisError(f"CSV must contain 'filename' and 'execution_time (s)' columns: {path}")
+            raise ValueError(f"CSV must contain 'filename' and 'execution_time (s)' columns: {path}")
         
         # Process each row
         for _, row in df.iterrows():
@@ -164,7 +168,7 @@ def combine_time_results(
                 continue
     
     if not time_data:
-        raise AnalysisError("No valid time data found in input files")
+        raise ValueError("No valid time data found in input files")
     
     # Get all unique methods
     all_methods = sorted({method for algo_data in time_data.values() for method in algo_data})

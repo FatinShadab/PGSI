@@ -24,6 +24,8 @@ from ..models.statistics import (
     perform_statistical_tests,
     oneway_anova_greenscore,
 )
+from ..benchmark.orchestrator import run_benchmark_suite
+from ..benchmarks.registry import list_algorithms, list_methods
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -107,7 +109,7 @@ Examples:
     )
     etc_compare_parser.add_argument('csv_file', type=str, help='Path to CSV file with method metrics')
     etc_compare_parser.add_argument('-o', '--output', type=str, help='Output image path')
-
+    
     # statistics: basic statistical tests
     stats_parser = subparsers.add_parser(
         'statistics',
@@ -117,6 +119,85 @@ Examples:
     stats_parser.add_argument('--time', type=str, help='Time comparison CSV (algorithm columns)')
     stats_parser.add_argument('--carbon', type=str, help='Carbon comparison CSV (algorithm columns)')
     stats_parser.add_argument('--greenscore', type=str, help='Greenscore CSV with columns method,green_score')
+    
+    # benchmark: run benchmark suite
+    benchmark_parser = subparsers.add_parser(
+        'benchmark',
+        help='Benchmark execution commands'
+    )
+    benchmark_subparsers = benchmark_parser.add_subparsers(dest='benchmark_command', help='Benchmark commands')
+    
+    # benchmark run
+    run_parser = benchmark_subparsers.add_parser(
+        'run',
+        help='Execute benchmark suite and generate GreenScore'
+    )
+    run_parser.add_argument(
+        '--algorithms',
+        type=str,
+        nargs='+',
+        default=['all'],
+        help='Algorithm names to run (default: all). Use "all" for all algorithms.'
+    )
+    run_parser.add_argument(
+        '--methods',
+        type=str,
+        nargs='+',
+        default=['all'],
+        help='Execution methods to run (default: all). Use "all" for all methods.'
+    )
+    run_parser.add_argument(
+        '--runs',
+        type=int,
+        default=50,
+        help='Number of runs per benchmark (default: 50)'
+    )
+    run_parser.add_argument(
+        '--output',
+        type=str,
+        default='results',
+        help='Output directory for results (default: results/)'
+    )
+    run_parser.add_argument(
+        '--carbon-intensity',
+        type=float,
+        default=0.000475,
+        help='Carbon intensity factor in gCO₂e/J (default: 0.000475)'
+    )
+    run_parser.add_argument(
+        '--alpha',
+        type=float,
+        default=0.4,
+        help='Energy weight for GreenScore (default: 0.4)'
+    )
+    run_parser.add_argument(
+        '--beta',
+        type=float,
+        default=0.4,
+        help='Carbon weight for GreenScore (default: 0.4)'
+    )
+    run_parser.add_argument(
+        '--gamma',
+        type=float,
+        default=0.2,
+        help='Time weight for GreenScore (default: 0.2)'
+    )
+    
+    # benchmark list
+    list_parser = benchmark_subparsers.add_parser(
+        'list',
+        help='List available algorithms and methods'
+    )
+    list_parser.add_argument(
+        '--algorithms',
+        action='store_true',
+        help='List available algorithms'
+    )
+    list_parser.add_argument(
+        '--methods',
+        action='store_true',
+        help='List available execution methods'
+    )
     
     # Parse arguments
     args = parser.parse_args(argv)
@@ -128,8 +209,14 @@ Examples:
     
     try:
         if args.command == 'evcvt':
-            csv_path = validate_file_path(args.csv_file, must_exist=True)
-            output_path = Path(args.output) if args.output else csv_path.parent / f"{csv_path.stem}_evcvt.png"
+            csv_path = Path(args.csv_file)
+            if not csv_path.exists():
+                print(f"❌ Error: CSV file not found: {csv_path}")
+                return 1
+            
+            output_path = Path(args.output) if args.output else None
+            if output_path is None:
+                output_path = csv_path.parent / f"{csv_path.stem}_evcvt.png"
             
             metrics = ["energy_mean_μJ", "time_mean_s", "carbon_mean_gCO2eq"]
             generate_grouped_bar_chart(
@@ -142,9 +229,19 @@ Examples:
             )
             
         elif args.command == 'lcpack':
-            energy_path = validate_file_path(args.energy, must_exist=True)
-            time_path = validate_file_path(args.time, must_exist=True)
-            carbon_path = validate_file_path(args.carbon, must_exist=True)
+            energy_path = Path(args.energy)
+            time_path = Path(args.time)
+            carbon_path = Path(args.carbon)
+            
+            if not energy_path.exists():
+                print(f"❌ Error: Energy file not found: {energy_path}")
+                return 1
+            if not time_path.exists():
+                print(f"❌ Error: Time file not found: {time_path}")
+                return 1
+            if not carbon_path.exists():
+                print(f"❌ Error: Carbon file not found: {carbon_path}")
+                return 1
             
             output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -174,8 +271,15 @@ Examples:
             )
             
         elif args.command == 'scatter':
-            energy_path = validate_file_path(args.energy_csv, must_exist=True)
-            time_path = validate_file_path(args.time_csv, must_exist=True)
+            energy_path = Path(args.energy_csv)
+            time_path = Path(args.time_csv)
+            
+            if not energy_path.exists():
+                print(f"❌ Error: Energy file not found: {energy_path}")
+                return 1
+            if not time_path.exists():
+                print(f"❌ Error: Time file not found: {time_path}")
+                return 1
             
             output_path = Path(args.output) if args.output else Path.cwd() / "scatter_energy_vs_time.png"
             
@@ -186,8 +290,15 @@ Examples:
             )
             
         elif args.command == 'line-compare':
-            energy_path = validate_file_path(args.energy_csv, must_exist=True)
-            time_path = validate_file_path(args.time_csv, must_exist=True)
+            energy_path = Path(args.energy_csv)
+            time_path = Path(args.time_csv)
+            
+            if not energy_path.exists():
+                print(f"❌ Error: Energy file not found: {energy_path}")
+                return 1
+            if not time_path.exists():
+                print(f"❌ Error: Time file not found: {time_path}")
+                return 1
             
             output_path = Path(args.output) if args.output else Path.cwd() / "line_energy_vs_time_trends.png"
             
@@ -198,7 +309,10 @@ Examples:
             )
             
         elif args.command == 'etc-compare':
-            csv_path = validate_file_path(args.csv_file, must_exist=True)
+            csv_path = Path(args.csv_file)
+            if not csv_path.exists():
+                print(f"❌ Error: CSV file not found: {csv_path}")
+                return 1
             
             output_path = Path(args.output) if args.output else Path.cwd() / "method_metric_comparison_linechart.png"
             
@@ -206,7 +320,7 @@ Examples:
                 csv_file=csv_path,
                 output_file=output_path
             )
-
+        
         elif args.command == 'statistics':
             results = {}
             if args.energy and args.time and args.carbon:
@@ -225,6 +339,50 @@ Examples:
             for key, value in results.items():
                 print(f"{key}: {value}")
         
+        elif args.command == 'benchmark':
+            if not args.benchmark_command:
+                benchmark_parser.print_help()
+                return 1
+            
+            if args.benchmark_command == 'list':
+                if args.algorithms:
+                    algorithms = list_algorithms()
+                    print("Available algorithms:")
+                    for algo in algorithms:
+                        print(f"  - {algo}")
+                elif args.methods:
+                    methods = list_methods()
+                    print("Available execution methods:")
+                    for method in methods:
+                        print(f"  - {method}")
+                else:
+                    algorithms = list_algorithms()
+                    methods = list_methods()
+                    print("Available algorithms:")
+                    for algo in algorithms:
+                        print(f"  - {algo}")
+                    print()
+                    print("Available execution methods:")
+                    for method in methods:
+                        print(f"  - {method}")
+                return 0
+            
+            elif args.benchmark_command == 'run':
+                output_path = Path(args.output)
+                greenscore_path = run_benchmark_suite(
+                    algorithms=args.algorithms,
+                    methods=args.methods,
+                    runs=args.runs,
+                    output_dir=output_path,
+                    carbon_intensity=args.carbon_intensity,
+                    alpha=args.alpha,
+                    beta=args.beta,
+                    gamma=args.gamma,
+                )
+                print(f"✅ Benchmark suite completed successfully!")
+                print(f"   GreenScore results: {greenscore_path}")
+                return 0
+        
         return 0
         
     except PGSIAnalyzerError as e:
@@ -232,6 +390,8 @@ Examples:
         return 1
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
 
