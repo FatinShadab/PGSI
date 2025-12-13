@@ -1,19 +1,30 @@
 """
 Utilities module for shared helper functions.
-
-This module provides validation, error handling, and other utility functions
-used throughout the package.
 """
-
-# Imports will be added as modules are implemented
-# from .validation import validate_file_path, validate_dataframe
-# from .errors import PGSIAnalyzerError, MeasurementError, AnalysisError
+from .validation import (
+    validate_file_path,
+    validate_dataframe,
+    validate_weights,
+    validate_platform,
+    require_columns,
+)
+from .errors import (
+    PGSIAnalyzerError,
+    MeasurementError,
+    AnalysisError,
+    PlatformError,
+    ConfigurationError,
+)
 
 __all__ = [
-    # "validate_file_path",
-    # "validate_dataframe",
-    # "PGSIAnalyzerError",
-    # "MeasurementError",
-    # "AnalysisError",
+    "validate_file_path",
+    "validate_dataframe",
+    "validate_weights",
+    "validate_platform",
+    "require_columns",
+    "PGSIAnalyzerError",
+    "MeasurementError",
+    "AnalysisError",
+    "PlatformError",
+    "ConfigurationError",
 ]
-

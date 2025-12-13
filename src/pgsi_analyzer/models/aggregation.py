@@ -9,6 +9,8 @@ import pandas as pd
 from pathlib import Path
 from typing import Union, Optional
 
+from ..utils import AnalysisError, ConfigurationError
+
 
 def aggregate_energy(
     folder_path: Union[str, Path],
@@ -38,16 +40,16 @@ def aggregate_energy(
     folder = Path(folder_path) if isinstance(folder_path, str) else folder_path
     
     if not folder.exists():
-        raise FileNotFoundError(f"Folder not found: {folder}")
+        raise ConfigurationError(f"Folder not found: {folder}")
     
     if not folder.is_dir():
-        raise ValueError(f"Path is not a directory: {folder}")
+        raise ConfigurationError(f"Path is not a directory: {folder}")
     
     # Find all CSV files
     csv_files = list(folder.glob('*.csv'))
     
     if not csv_files:
-        raise ValueError(f"No CSV files found in folder: {folder}")
+        raise AnalysisError(f"No CSV files found in folder: {folder}")
     
     results = []
     
@@ -73,7 +75,7 @@ def aggregate_energy(
             continue
     
     if not results:
-        raise ValueError(f"No valid energy data found in folder: {folder}")
+        raise AnalysisError(f"No valid energy data found in folder: {folder}")
     
     # Create DataFrame
     result_df = pd.DataFrame(results)
@@ -115,16 +117,16 @@ def aggregate_time(
     folder = Path(folder_path) if isinstance(folder_path, str) else folder_path
     
     if not folder.exists():
-        raise FileNotFoundError(f"Folder not found: {folder}")
+        raise ConfigurationError(f"Folder not found: {folder}")
     
     if not folder.is_dir():
-        raise ValueError(f"Path is not a directory: {folder}")
+        raise ConfigurationError(f"Path is not a directory: {folder}")
     
     # Find all CSV files
     csv_files = list(folder.glob('*.csv'))
     
     if not csv_files:
-        raise ValueError(f"No CSV files found in folder: {folder}")
+        raise AnalysisError(f"No CSV files found in folder: {folder}")
     
     results = []
     
@@ -150,7 +152,7 @@ def aggregate_time(
             continue
     
     if not results:
-        raise ValueError(f"No valid time data found in folder: {folder}")
+        raise AnalysisError(f"No valid time data found in folder: {folder}")
     
     # Create DataFrame
     result_df = pd.DataFrame(results)

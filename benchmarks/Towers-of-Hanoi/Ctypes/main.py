@@ -4,10 +4,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 import ctypes
 from ctypes import c_int, c_char_p
-from input import __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
 import argparse
-from energy_module.decorator import measure_energy_to_csv
-from time_modules.decorator import measure_time_to_csv
+from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
+
 
 # Load the shared library
 lib = ctypes.CDLL("./libhanoi.so")
