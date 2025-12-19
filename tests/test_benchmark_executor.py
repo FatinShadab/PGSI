@@ -23,20 +23,25 @@ class TestFindPythonExecutable:
         exe = find_python_executable("cpython")
         assert exe == sys.executable
 
-    @patch('shutil.which')
-    def test_find_pypy_success(self, mock_which):
+    def test_find_pypy_success(self):
         """Test finding PyPy executable when available."""
-        mock_which.side_effect = lambda x: x if x == "pypy3" else None
+        from pgsi_analyzer.config import ToolPaths
         
-        exe = find_python_executable("pypy")
-        assert exe == "pypy3"
+        pypy_path = Path("/usr/bin/pypy3")
+        tool_paths = ToolPaths(
+            python=Path(sys.executable),
+            pypy=pypy_path,
+        )
+        
+        exe = find_python_executable("pypy", tool_paths=tool_paths)
+        assert exe == str(pypy_path)
 
     @patch('shutil.which')
     def test_find_pypy_not_found(self, mock_which):
         """Test finding PyPy when not available raises error."""
         mock_which.return_value = None
         
-        with pytest.raises(PlatformError, match="PyPy not found"):
+        with pytest.raises(PlatformError, match="PyPy method selected but no valid PyPy executable found"):
             find_python_executable("pypy")
 
     def test_find_cython(self):

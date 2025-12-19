@@ -126,7 +126,7 @@ pgsi-analyzer benchmark run \
   --runs 5
 ```
 
-This runs the `towers-of-hanoi` algorithm using CPython for 5 runs. The tool will:
+This runs the `hanoi` algorithm using CPython for 5 runs. The tool will:
 - Execute the benchmark
 - Collect energy and time measurements
 - Generate raw CSVs in `energy_benchmark/` and `time_benchmark/` directories
