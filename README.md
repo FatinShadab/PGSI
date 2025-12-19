@@ -1,136 +1,274 @@
-# Python Under the Microscope: A Comparative Energy Analysis of Execution Methods
+# PGSI Analyzer: Python GreenScore and Sustainability Analyzer
 
-Welcome to Python Energy Microscope. This repository contains source code, benchmarks, and energy profiling tools for our research study: **"Python Under the Microscope: A Comparative Energy Analysis of Execution Methods."**
+**PGSI Analyzer** is a comprehensive benchmarking and sustainability analysis tool for Python implementations. It measures and compares the **energy consumption**, **execution time**, **carbon footprint**, and overall **sustainability** of different Python execution methods using a novel composite metric called **GreenScore**.
 
-## Overview
+## Project Overview
 
-As Python remains one of the most widely used programming languages, it's crucial to understand the sustainability implications of different ways to execute Python code. This study conducts a fine-grained comparison of five execution methods in terms of **energy consumption**, **runtime performance**, and **carbon footprint**:
+### What is PGSI Analyzer?
 
-* **CPython** (standard interpreter)
-* **PyPy** (Just-In-Time compiler)
-* **Cython** (Ahead-of-Time compiler)
-* **ctypes** (Foreign Function Interface to native C code)
-* **py\_compile** (Bytecode compilation)
+PGSI Analyzer is a CLI-driven benchmark execution framework that runs a suite of CPU-bound algorithms across multiple Python execution methods. It automatically collects raw measurement data, aggregates results, computes carbon emissions, and produces a final **GreenScore** ranking that helps researchers and developers identify the most sustainable Python execution strategies.
 
-Using a reproducible benchmarking setup and 15 diverse CPU-bound algorithms, we rank these methods by their overall sustainability using a novel metric called **GreenScore**.
+### What It Measures
 
-## Research Objectives
+- **Execution Time**: Precise runtime measurement using Python's `time.time()`
+- **Energy Consumption**: Hardware-based measurement on Linux x86_64 (Intel RAPL counters via pyRAPL) or time-based estimation on other platforms
+- **Carbon Footprint**: Derived from energy consumption using configurable carbon intensity factors
+- **GreenScore**: A weighted composite metric integrating energy, carbon, and time (lower is better)
 
-1.  **Energy & Environmental Profiling**
-    * Quantitatively compare execution time, energy consumption, and CO₂ emissions across Python execution methods.
-2.  **Sustainable Runtime Selection**
-    * Identify the most eco-friendly execution strategy for Python workloads.
-3.  **Benchmark-Driven Insights**
-    * Establish a reproducible, algorithmically diverse benchmark suite reflective of real-world Python usage.
+### What It Runs
 
-## Research Questions
+The tool executes a suite of **15 diverse CPU-bound algorithms**, each available across **5 execution methods**:
 
-* Which execution method offers the best balance between speed, energy use, and carbon emissions?
-* How do interpreted, compiled, and hybrid execution strategies differ in sustainability?
-* Can a unified metric fairly rank Python methods by environmental impact?
+- **CPython**: Standard Python interpreter
+- **PyPy**: Just-In-Time (JIT) compiler
+- **Cython**: Ahead-of-Time (AOT) compiler
+- **ctypes**: Foreign Function Interface to native C code
+- **py_compile**: Bytecode-compiled Python
 
-## Research Methodology
+This results in **75 total benchmark combinations** (15 algorithms × 5 methods), providing comprehensive coverage of real-world Python workloads.
 
-This study employed a rigorous, reproducible methodology to ensure accurate comparison of energy consumption and performance across the five Python execution methods.
+## Features
 
-### 1. Benchmark Suite
+### Benchmarks
 
-The analysis is based on a set of **15 diverse CPU-bound algorithms**.
-* **10 algorithms** were adapted from the **Computer Language Benchmarks Game (CLBG)**, ensuring established and complex computational tasks.
-* **5 supplementary tasks** were added to further diversify the workload.
-* Crucially, **each algorithm is implemented identically** across all five execution strategies to isolate the impact of the runtime method.
+- **15 algorithms** covering diverse computational patterns:
+  - `binary-trees`, `fannkuch-redux`, `fasta`, `k-nucleotide`, `mandelbrot`
+  - `n-body`, `n-queens`, `pi-digits`, `regex-redux`, `reverse-complement`
+  - `sieve`, `spectral-norm`, `strassen`, `hanoi`, `knn`
+- Each algorithm available for all 5 execution methods
+- Deterministic benchmark registry with automatic discovery
+- Package-integrated benchmarks (no external scripts required)
 
-### 2. Execution Environments
+### Full Pipeline
 
-All experiments were conducted on a uniform hardware setup (Intel-based laptop running Ubuntu). The specific software versions used for each execution method were:
+The tool orchestrates a complete measurement and analysis pipeline:
 
-* **CPython** 3.13.2
-* **PyPy** 7.3.19 (Python 3.11.11 compatible)
-* **Cython** 3.0.12 with static typing support
-* **ctypes** via shared native C libraries (Foreign Function Interface)
-* **py\_compile** with optimization level 2
+1. **Build**: Compiles Cython and ctypes benchmarks (if needed)
+2. **Execute**: Runs benchmarks in isolated subprocesses
+3. **Collect**: Gathers raw CSV data from measurement decorators
+4. **Aggregate**: Processes raw data per method
+5. **Combine**: Merges results across methods
+6. **Carbon**: Calculates carbon footprint from energy data
+7. **GreenScore**: Computes final sustainability ranking
 
-### 3. Measurement Tools & Data Acquisition
+### Cross-Platform CLI
 
-The following tools and metrics were used for quantitative analysis:
+- `pgsi-analyzer benchmark list`: Lists available algorithms and methods
+- `pgsi-analyzer benchmark run`: Executes benchmarks and generates results
+- Supports flexible algorithm/method selection (`all` or specific names)
+- Configurable run counts, output directories, and GreenScore weights
 
-| Metric | Tool / Basis | Detail |
-| :--- | :--- | :--- |
-| **Energy** | pyRAPL (Intel RAPL counters) | Measures energy consumption at the package and DRAM level. |
-| **Runtime** | Python's `time.time()` | Used for precise measurement of execution time. |
-| **Carbon Footprint** | Calculation Basis | Derived from the measured energy consumption using a global average carbon intensity factor ($\mathbf{0.000475\ gCO₂e/J}$). |
+### Configuration
 
-### 4. Experiment Protocol & Reproducibility
+- **Tool paths** configurable via:
+  - `.env` file (recommended)
+  - Environment variables (`PGSI_PYPY_PATH`, `PGSI_CC_PATH`, `PGSI_PYTHON_PATH`)
+  - CLI flags (`--pypy-path`, `--cc-path`, `--python-path`)
+- Priority: CLI flags > Environment variables > `.env` > Built-in defaults
+- Reproducible ordering and deterministic CSV outputs
 
-To ensure statistical significance and reproducibility:
+## Installation
 
-* Each method-algorithm pair was repeated **50 times**.
-* This resulted in a comprehensive dataset of **75 total combinations** (15 algorithms x 5 methods).
-* The raw and normalized benchmark outputs are provided for full transparency in the `/data` repository folder.
+### Python Requirements
 
-## GreenScore: Composite Metric
+- **Python 3.8+** (tested on 3.8 through 3.14)
+- `pip` package manager
 
-To compare methods holistically, we introduce **GreenScore**, a weighted composite score that integrates energy, carbon, and time:
+### Basic Installation
 
-```math
-\text{GreenScore} = \alpha \cdot \text{Energy}_{\text{norm}} + \beta \cdot \text{Carbon}_{\text{norm}} + \gamma \cdot \text{Time}_{\text{norm}}
-````
-
-Where: $\alpha = 0.4$, $\beta = 0.4$, $\gamma = 0.2$.
-
-  * All metrics are normalized per-algorithm (min-max normalization).
-  * Each execution method's average normalized metrics are aggregated across 15 algorithms.
-  * **Lower GreenScore = better overall sustainability.**
-
-### Example:
-
-For the `ctypes` method:
-
-```math
-\text{Energy}_{\text{norm}} = 0.162,\ \text{Carbon}_{\text{norm}} = 0.193,\ \text{Time}_{\text{norm}} = 0.123
-```
-
-```math
-\text{GreenScore}_{\texttt{ctypes}} = 0.4 \cdot 0.162 + 0.4 \cdot 0.193 + 0.2 \cdot 0.123 = \textbf{0.1666}
-```
-
-This was the **lowest score**, confirming `ctypes` as the greenest Python method.
-
-## Results Summary
-
-  * **ctypes** achieved the best overall sustainability.
-  * **PyPy** excelled in long-running loops due to JIT.
-  * **Cython** provided consistent performance gains but higher compilation overhead.
-  * **CPython** and **py\_compile** served as baselines but showed lower efficiency.
-
-
-## Repository Important Directories
-
-```
-/benchmarks          # All 15 algorithm implementations
-/energy_modules      # pyRAPL wrappers and logging scripts
-/time_modules        # Execution time measurement
-/visualization       # Bar charts, line graphs, scatter plots
-/data                # Normalized and raw benchmark outputs
-/scripts             # Contains python scripts used in various calcualtion & tasks
-/synthetic_survey    # Contains the code used for performing synthetic survey
-/input               # Contains the inputs for benchmarks
-```
-
-
-## Getting Started
+Install from PyPI (or install from source):
 
 ```bash
-git clone [https://github.com/FatinShadab/python-energy-microscope.git](https://github.com/FatinShadab/python-energy-microscope.git)
-cd python-energy-microscope
-python3 run_benchmarks.py
+pip install pgsi-analyzer
 ```
+
+This automatically installs Python dependencies including:
+- `cython>=3.0.0` (for Cython benchmark compilation)
+- `python-dotenv>=1.0.0` (for `.env` file support)
+- `pandas`, `matplotlib`, `numpy`, `psutil` (core analysis libraries)
+
+### System Prerequisites
+
+**Required:**
+
+- **C Compiler** (for `ctypes` and `cython` methods):
+  - **Linux/macOS**: `gcc` or `clang` (install via package manager)
+  - **Windows**: `cl.exe` (Visual Studio Build Tools) or `gcc` (MinGW/MSYS2)
+
+**Optional but Recommended:**
+
+- **PyPy** on system PATH (for `pypy` method):
+  - Install from [PyPy website](https://www.pypy.org/download.html)
+  - Ensure `pypy` or `pypy3` is accessible in your PATH
+
+**Platform Limitations:**
+
+- **Hardware energy counters** (pyRAPL) are only available on **Linux x86_64**
+- On Windows and macOS, energy is estimated from CPU time (still accurate for CPU-bound workloads)
+- All platforms support time measurement and carbon footprint calculation
+
+## Quick Start: Basic Usage
+
+### List Available Benchmarks
+
+```bash
+pgsi-analyzer benchmark list
+```
+
+This displays all 15 available algorithms and 5 execution methods.
+
+### Run a Small Test Benchmark
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms hanoi \
+  --methods cpython \
+  --runs 5
+```
+
+This runs the `towers-of-hanoi` algorithm using CPython for 5 runs. The tool will:
+- Execute the benchmark
+- Collect energy and time measurements
+- Generate raw CSVs in `energy_benchmark/` and `time_benchmark/` directories
+- Produce aggregated results and a `GreenScore.csv` in the default `results/` directory
+
+### Run Multiple Algorithms and Methods
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms hanoi binary-trees \
+  --methods cpython pypy \
+  --runs 10
+```
+
+This runs two algorithms across two methods, generating comparison data.
+
+### Run Full Suite
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms all \
+  --methods all \
+  --runs 50 \
+  --output results/
+```
+
+**Note**: This can take significant time (hours depending on your hardware). The `results/` directory will contain:
+- Raw measurement CSVs organized by method
+- Aggregated CSVs per method
+- Combined results across all methods
+- Final `GreenScore.csv` with sustainability rankings
+
+### Custom GreenScore Weights
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms all \
+  --methods all \
+  --runs 50 \
+  --alpha 0.5 --beta 0.3 --gamma 0.2
+```
+
+The `--alpha`, `--beta`, and `--gamma` flags control how energy, carbon footprint, and execution time contribute to the final GreenScore. Default values are `alpha=0.4`, `beta=0.4`, `gamma=0.2`.
+
+## Tool-Path Configuration
+
+### Using `.env` File (Recommended)
+
+Create a `.env` file in your project directory:
+
+```env
+PGSI_PYTHON_PATH=/usr/bin/python3
+PGSI_PYPY_PATH=/usr/bin/pypy3
+PGSI_CC_PATH=/usr/bin/gcc
+```
+
+Then run benchmarks with:
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms hanoi \
+  --methods cpython \
+  --runs 5 \
+  --env-file .env
+```
+
+### Using CLI Flags
+
+Override paths directly from the command line:
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms hanoi \
+  --methods cpython \
+  --runs 5 \
+  --python-path /path/to/python \
+  --pypy-path /path/to/pypy \
+  --cc-path /usr/bin/gcc
+```
+
+### Configuration Precedence
+
+Paths are resolved in this order (highest to lowest priority):
+
+1. **Command-line flags** (`--python-path`, `--pypy-path`, `--cc-path`)
+2. **Environment variables** (`PGSI_PYTHON_PATH`, `PGSI_PYPY_PATH`, `PGSI_CC_PATH`)
+3. **`.env` file** (if `--env-file` is specified or auto-detected)
+4. **Built-in defaults** (system PATH detection)
+
+## Outputs and Where to Find Them
+
+After running benchmarks, you'll find the following structure in your output directory (default: `results/`):
+
+```
+results/
+├── energy_benchmark/          # Raw energy measurement CSVs
+│   └── hanoi_cpython.csv
+├── time_benchmark/            # Raw time measurement CSVs
+│   └── hanoi_cpython.csv
+├── cpython/                   # Aggregated results per method
+│   ├── energy_aggregated.csv
+│   └── time_aggregated.csv
+├── energy_combined.csv        # Combined energy across all methods
+├── time_combined.csv          # Combined time across all methods
+├── carbon_footprint.csv       # Carbon emissions per method
+└── GreenScore.csv             # Final sustainability ranking
+```
+
+### Interpreting GreenScore.csv
+
+The `GreenScore.csv` file contains the final sustainability rankings. You can open it in any spreadsheet application or analyze it with pandas:
+
+```python
+import pandas as pd
+df = pd.read_csv('results/GreenScore.csv')
+print(df.sort_values('green_score'))
+```
+
+**Lower GreenScore = better sustainability**. The file includes normalized energy, carbon, and time metrics along with the composite GreenScore for each execution method.
+
+## Research Context
+
+This tool was developed as part of the research study: **"Python Under the Microscope: A Comparative Energy Analysis of Execution Methods"** (IEEE Access, 2025).
+
+### Research Objectives
+
+1. **Energy & Environmental Profiling**: Quantitatively compare execution time, energy consumption, and CO₂ emissions across Python execution methods.
+2. **Sustainable Runtime Selection**: Identify the most eco-friendly execution strategy for Python workloads.
+3. **Benchmark-Driven Insights**: Establish a reproducible, algorithmically diverse benchmark suite reflective of real-world Python usage.
+
+### Methodology
+
+- **15 diverse CPU-bound algorithms** (10 from Computer Language Benchmarks Game + 5 supplementary)
+- **5 execution methods** with identical algorithm implementations
+- **50 runs per combination** for statistical significance
+- **Hardware energy measurement** on Linux x86_64 (Intel RAPL) or time-based estimation elsewhere
 
 ## Citation
 
-If you use this work, please cite -
+If you use this work in your research, please cite:
 
-```
+```bibtex
 @article{shadab2025microscope,
   title   = {Python Under the Microscope: A Comparative Energy Analysis of Execution Methods},
   author  = {Turja, Md Fatin Shadab and Others},
@@ -138,5 +276,17 @@ If you use this work, please cite -
   year    = {2025}
 }
 ```
+
+## Additional Documentation
+
+For detailed setup instructions, troubleshooting, and advanced usage, see:
+- **[Getting Started Guide](docs/getting_started.md)**: Step-by-step setup and validation
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)**: Technical architecture details
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
 
 This research was conducted as part of **EEE 4261 (Green Computing)** offered at United International University in Spring 2025. All code, data, and visualization tools are released for reproducibility and open sustainability research.
