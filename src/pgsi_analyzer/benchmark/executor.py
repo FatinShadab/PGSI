@@ -15,47 +15,53 @@ from typing import Optional, Dict, List
 
 from ..utils import MeasurementError, PlatformError
 from ..platform.detection import detect_platform
+from ..config import ToolPaths
 
 
-def find_python_executable(method: str) -> str:
+def find_python_executable(method: str, tool_paths: Optional[ToolPaths] = None) -> str:
     """
     Find the correct Python executable for a method.
     
     Args:
         method: Execution method ('cpython', 'pypy', etc.)
+        tool_paths: Optional ToolPaths configuration. If None, uses defaults.
         
     Returns:
-        Path to Python executable
+        Path to Python executable (as string for subprocess)
         
     Raises:
         PlatformError: If required runtime not found
     """
+    if tool_paths is None:
+        # Fallback to default behavior for backwards compatibility
+        tool_paths = ToolPaths(python=Path(sys.executable))
+    
     if method == "cpython":
-        return sys.executable
+        return str(tool_paths.python)
     
     elif method == "pypy":
-        # Try common pypy names
-        for pypy_cmd in ["pypy3", "pypy", "pypy3.11", "pypy3.10"]:
-            if shutil.which(pypy_cmd):
-                return pypy_cmd
+        if tool_paths.pypy:
+            return str(tool_paths.pypy)
         raise PlatformError(
-            "PyPy not found. Install PyPy to run benchmarks with PyPy method."
+            "PyPy method selected but no valid PyPy executable found. "
+            "Configure PGSI_PYPY_PATH, use --pypy-path, or ensure 'pypy' is on PATH."
         )
     
     elif method in ("cython", "ctypes", "py_compile"):
         # These use standard Python after compilation/preparation
-        return sys.executable
+        return str(tool_paths.python)
     
     else:
         raise ValueError(f"Unknown execution method: {method}")
 
 
-def prepare_py_compile(benchmark_path: Path) -> Path:
+def prepare_py_compile(benchmark_path: Path, tool_paths: Optional[ToolPaths] = None) -> Path:
     """
     Pre-compile Python file to .pyc for py_compile method.
     
     Args:
         benchmark_path: Path to main.py file
+        tool_paths: Optional ToolPaths configuration for Python executable
         
     Returns:
         Path to compiled .pyc file (or main.py if compilation fails)
@@ -64,9 +70,12 @@ def prepare_py_compile(benchmark_path: Path) -> Path:
     if not main_py.exists():
         raise FileNotFoundError(f"main.py not found in {benchmark_path}")
     
+    # Use configured Python or default
+    python_exe = str(tool_paths.python) if tool_paths else sys.executable
+    
     # Compile to .pyc
     result = subprocess.run(
-        [sys.executable, "-m", "py_compile", str(main_py)],
+        [python_exe, "-m", "py_compile", str(main_py)],
         cwd=str(benchmark_path),
         capture_output=True,
         text=True,
@@ -95,6 +104,7 @@ def execute_benchmark(
     runs: int = 50,
     output_dir: Path = None,
     env: Optional[Dict[str, str]] = None,
+    tool_paths: Optional[ToolPaths] = None,
 ) -> Dict[str, Path]:
     """
     Execute a benchmark and collect measurement CSVs.
@@ -109,6 +119,7 @@ def execute_benchmark(
         runs: Number of runs (passed to benchmark script)
         output_dir: Directory where CSVs will be written (defaults to benchmark_path)
         env: Optional environment variables for subprocess
+        tool_paths: Optional ToolPaths configuration for Python/PyPy executables
         
     Returns:
         Dictionary with keys:
@@ -125,20 +136,21 @@ def execute_benchmark(
     # Determine what to execute
     if method == "py_compile":
         # Pre-compile and execute .pyc
-        exec_path = prepare_py_compile(benchmark_path)
+        exec_path = prepare_py_compile(benchmark_path, tool_paths)
+        python_exe = str(tool_paths.python) if tool_paths else sys.executable
         if exec_path.suffix == ".pyc":
             # Execute .pyc directly
-            exec_args = [sys.executable, str(exec_path)]
+            exec_args = [python_exe, str(exec_path)]
         else:
             # Fallback to .py
-            exec_args = [sys.executable, str(exec_path)]
+            exec_args = [python_exe, str(exec_path)]
     elif benchmark_path.is_file() and benchmark_path.name == "main.py":
         # Direct main.py execution
-        python_exe = find_python_executable(method)
+        python_exe = find_python_executable(method, tool_paths)
         exec_args = [python_exe, str(benchmark_path)]
     elif (benchmark_path / "main.py").exists():
         # Directory with main.py
-        python_exe = find_python_executable(method)
+        python_exe = find_python_executable(method, tool_paths)
         exec_args = [python_exe, str(benchmark_path / "main.py")]
     else:
         raise FileNotFoundError(

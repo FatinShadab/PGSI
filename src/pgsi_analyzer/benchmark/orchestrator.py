@@ -34,6 +34,7 @@ from ..models import (
     calculate_greenscore,
 )
 from ..utils import AnalysisError, ConfigurationError
+from ..config import ToolPaths
 
 
 def resolve_algorithms(algorithms: List[str]) -> List[str]:
@@ -103,6 +104,7 @@ def run_benchmark_suite(
     alpha: float = 0.4,
     beta: float = 0.4,
     gamma: float = 0.2,
+    tool_paths: Optional[ToolPaths] = None,
 ) -> Path:
     """
     Execute full benchmark suite and generate GreenScore CSV.
@@ -126,6 +128,7 @@ def run_benchmark_suite(
         alpha: Energy weight for GreenScore (default: 0.4)
         beta: Carbon weight for GreenScore (default: 0.4)
         gamma: Time weight for GreenScore (default: 0.2)
+        tool_paths: Optional ToolPaths configuration for Python/PyPy/C compiler
         
     Returns:
         Path to final GreenScore.csv file
@@ -164,7 +167,7 @@ def run_benchmark_suite(
                 print(f"  Building {algorithm}/{method}...", end=" ", flush=True)
                 try:
                     benchmark_path = get_benchmark_path(algorithm, method)
-                    built_path = build_benchmark(algorithm, method, benchmark_path)
+                    built_path = build_benchmark(algorithm, method, benchmark_path, tool_paths=tool_paths)
                     built_benchmarks.setdefault(algorithm, {})[method] = built_path
                     print("✓")
                 except Exception as e:
@@ -200,6 +203,7 @@ def run_benchmark_suite(
                     benchmark_path=benchmark_path,
                     runs=runs,
                     output_dir=output_dir,
+                    tool_paths=tool_paths,
                 )
                 
                 execution_results[algorithm][method] = results

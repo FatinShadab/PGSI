@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..utils import ConfigurationError, PlatformError
+from ..config import ToolPaths
 
 
 def requires_build(method: str) -> bool:
@@ -28,7 +29,11 @@ def requires_build(method: str) -> bool:
     return method in ("cython", "ctypes")
 
 
-def build_cython(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path:
+def build_cython(
+    benchmark_path: Path,
+    build_dir: Optional[Path] = None,
+    tool_paths: Optional[ToolPaths] = None,
+) -> Path:
     """
     Build Cython extension module.
     
@@ -37,6 +42,7 @@ def build_cython(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
     Args:
         benchmark_path: Path to Cython benchmark directory (contains setup.py)
         build_dir: Optional directory for build artifacts (defaults to benchmark_path)
+        tool_paths: Optional ToolPaths configuration for Python executable
         
     Returns:
         Path to benchmark directory (build artifacts are in-place)
@@ -51,13 +57,16 @@ def build_cython(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
     if not setup_py.exists():
         raise ConfigurationError(f"setup.py not found in {benchmark_path}")
     
+    # Use configured Python or default
+    python_exe = str(tool_paths.python) if tool_paths else sys.executable
+    
     # Change to benchmark directory for build
     original_cwd = Path.cwd()
     
     try:
         # Build extension in-place
         result = subprocess.run(
-            [sys.executable, "setup.py", "build_ext", "--inplace"],
+            [python_exe, "setup.py", "build_ext", "--inplace"],
             cwd=str(benchmark_path),
             capture_output=True,
             text=True,
@@ -83,7 +92,11 @@ def build_cython(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
         os.chdir(str(original_cwd))
 
 
-def build_ctypes(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path:
+def build_ctypes(
+    benchmark_path: Path,
+    build_dir: Optional[Path] = None,
+    tool_paths: Optional[ToolPaths] = None,
+) -> Path:
     """
     Build C shared library for ctypes benchmark.
     
@@ -92,6 +105,7 @@ def build_ctypes(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
     Args:
         benchmark_path: Path to ctypes benchmark directory (contains .c files)
         build_dir: Optional directory for build artifacts (defaults to benchmark_path)
+        tool_paths: Optional ToolPaths configuration for C compiler
         
     Returns:
         Path to benchmark directory (shared library is in-place)
@@ -126,12 +140,21 @@ def build_ctypes(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
         if not c_newer:
             return benchmark_path  # Already built and up-to-date
     
+    # Determine compiler
+    if tool_paths and tool_paths.c_compiler:
+        compiler_exe = str(tool_paths.c_compiler)
+    else:
+        # Fallback to auto-detection
+        if platform.system() == "Windows":
+            compiler_exe = "gcc"  # Will try cl.exe if gcc fails
+        else:
+            compiler_exe = "gcc"
+    
     # Compile command
     if platform.system() == "Windows":
-        # Windows: use cl.exe or gcc if available
-        # Try gcc first (more common in development)
+        # Windows: use configured compiler or try gcc first, then cl.exe
         compile_cmd = [
-            "gcc",
+            compiler_exe,
             "-shared",
             "-o", str(lib_path),
             *[str(c) for c in c_files],
@@ -140,7 +163,7 @@ def build_ctypes(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
     else:
         # Linux/macOS: use gcc
         compile_cmd = [
-            "gcc",
+            compiler_exe,
             "-shared",
             "-fPIC",
             "-o", str(lib_path),
@@ -157,6 +180,16 @@ def build_ctypes(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
         )
         
         if result.returncode != 0:
+            # If configured compiler failed, try fallback detection
+            if tool_paths and tool_paths.c_compiler:
+                # User configured compiler failed
+                raise ConfigurationError(
+                    f"ctypes compilation failed with configured compiler '{compiler_exe}':\n"
+                    f"Command: {' '.join(compile_cmd)}\n"
+                    f"stdout: {result.stdout}\n"
+                    f"stderr: {result.stderr}"
+                )
+            
             # Try alternative: check if gcc is available
             gcc_check = subprocess.run(
                 ["gcc", "--version"],
@@ -165,7 +198,8 @@ def build_ctypes(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
             )
             if gcc_check.returncode != 0:
                 raise PlatformError(
-                    "C compiler (gcc) not found. Install gcc to build ctypes benchmarks."
+                    "C compiler not found. Configure PGSI_CC_PATH, use --cc-path, "
+                    "or install gcc/cl.exe to build ctypes benchmarks."
                 )
             
             raise ConfigurationError(
@@ -186,13 +220,19 @@ def build_ctypes(benchmark_path: Path, build_dir: Optional[Path] = None) -> Path
         raise ConfigurationError(f"ctypes compilation timed out for {benchmark_path}")
     except FileNotFoundError:
         raise PlatformError(
-            "C compiler (gcc) not found. Install gcc to build ctypes benchmarks."
+            "C compiler not found. Configure PGSI_CC_PATH, use --cc-path, "
+            "or install gcc/cl.exe to build ctypes benchmarks."
         )
     except Exception as e:
         raise ConfigurationError(f"ctypes compilation error for {benchmark_path}: {e}")
 
 
-def build_benchmark(algorithm: str, method: str, benchmark_path: Path) -> Path:
+def build_benchmark(
+    algorithm: str,
+    method: str,
+    benchmark_path: Path,
+    tool_paths: Optional[ToolPaths] = None,
+) -> Path:
     """
     Build a benchmark if it requires compilation.
     
@@ -200,6 +240,7 @@ def build_benchmark(algorithm: str, method: str, benchmark_path: Path) -> Path:
         algorithm: Algorithm name (for error messages)
         method: Execution method
         benchmark_path: Path to benchmark directory
+        tool_paths: Optional ToolPaths configuration
         
     Returns:
         Path to benchmark directory (ready for execution)
@@ -212,8 +253,8 @@ def build_benchmark(algorithm: str, method: str, benchmark_path: Path) -> Path:
         return benchmark_path  # No build needed
     
     if method == "cython":
-        return build_cython(benchmark_path)
+        return build_cython(benchmark_path, tool_paths=tool_paths)
     elif method == "ctypes":
-        return build_ctypes(benchmark_path)
+        return build_ctypes(benchmark_path, tool_paths=tool_paths)
     else:
         raise ValueError(f"Unknown build method: {method}")

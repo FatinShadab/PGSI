@@ -26,6 +26,7 @@ from ..models.statistics import (
 )
 from ..benchmark.orchestrator import run_benchmark_suite
 from ..benchmarks.registry import list_algorithms, list_methods
+from ..config import load_tool_paths
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -181,6 +182,26 @@ Examples:
         type=float,
         default=0.2,
         help='Time weight for GreenScore (default: 0.2)'
+    )
+    run_parser.add_argument(
+        '--env-file',
+        type=str,
+        help='Path to .env file containing tool paths (PGSI_PYPY_PATH, PGSI_CC_PATH, PGSI_PYTHON_PATH)'
+    )
+    run_parser.add_argument(
+        '--python-path',
+        type=str,
+        help='Path to Python executable for benchmarks (overrides PGSI_PYTHON_PATH and .env)'
+    )
+    run_parser.add_argument(
+        '--pypy-path',
+        type=str,
+        help='Path to PyPy executable (overrides PGSI_PYPY_PATH and .env)'
+    )
+    run_parser.add_argument(
+        '--cc-path',
+        type=str,
+        help='Path to C compiler executable (gcc/cl.exe) (overrides PGSI_CC_PATH and .env)'
     )
     
     # benchmark list
@@ -368,6 +389,15 @@ Examples:
                 return 0
             
             elif args.benchmark_command == 'run':
+                # Load tool paths from configuration
+                env_file = Path(args.env_file) if args.env_file else None
+                tool_paths = load_tool_paths(
+                    env_file=env_file,
+                    cli_python=args.python_path,
+                    cli_pypy=args.pypy_path,
+                    cli_cc=args.cc_path,
+                )
+                
                 output_path = Path(args.output)
                 greenscore_path = run_benchmark_suite(
                     algorithms=args.algorithms,
@@ -378,6 +408,7 @@ Examples:
                     alpha=args.alpha,
                     beta=args.beta,
                     gamma=args.gamma,
+                    tool_paths=tool_paths,
                 )
                 print(f"✅ Benchmark suite completed successfully!")
                 print(f"   GreenScore results: {greenscore_path}")
