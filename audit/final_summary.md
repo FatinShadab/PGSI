@@ -33,6 +33,10 @@ To **scale beyond the current 15 algorithms** (see **benchmarks/registry.py**) a
 
 ## 3. Technical Debt Inventory
 
+### 3.0 Completed (implemented post-audit)
+
+- **RAPL permission warnings (Issue B):** Implemented. When RAPL is unavailable on Linux x86_64 due to permissions, the tool now emits a **UserWarning** with actionable advice (cap_sys_rawio or root). **platform/hardware.py::warn_if_rapl_unavailable()** centralizes the check; **measurement/energy.py** calls it from the pyRAPL setup exception handler. Fallback to estimation is unchanged; the tool does not crash. See **audit/architecture.md** §13.2 and **audit/usage_guide.md** §3.3 (Troubleshooting Permissions).
+
 ### 3.1 High priority: Orchestrator God-file refactoring
 
 - **Location:** `src/pgsi_analyzer/benchmark/orchestrator.py`

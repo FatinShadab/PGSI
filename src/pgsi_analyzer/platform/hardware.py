@@ -6,6 +6,7 @@ hardware capabilities, including Intel RAPL support for energy measurement.
 """
 
 import platform
+import warnings
 import psutil
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -118,7 +119,40 @@ def check_rapl_support() -> bool:
         import pyRAPL
         pyRAPL.setup()
         return True
-    except (ImportError, OSError, RuntimeError):
+    except (ImportError, OSError, RuntimeError, PermissionError):
         # pyRAPL not installed or RAPL not available on this system
         return False
+
+
+def _is_permission_related(exc: BaseException) -> bool:
+    """Return True if the exception indicates RAPL access was denied by permissions."""
+    if isinstance(exc, PermissionError):
+        return True
+    if isinstance(exc, OSError) and getattr(exc, "errno", None) == 13:
+        return True
+    msg = str(exc).lower()
+    return "permission" in msg or "denied" in msg or "access" in msg
+
+
+def warn_if_rapl_unavailable(exc: BaseException) -> None:
+    """
+    Emit a UserWarning when RAPL is unavailable on Linux/Intel due to permissions.
+
+    Call this from the pyRAPL setup exception handler. On Linux x86_64, if the
+    exception looks permission-related (PermissionError, errno 13, or message
+    containing "permission"), warns with actionable advice (cap_sys_rawio or root).
+    On other platforms, does nothing so that no permission-specific instructions
+    appear for Windows/macOS.
+    """
+    if not is_linux_intel():
+        return
+    if not _is_permission_related(exc):
+        return
+    warnings.warn(
+        "Hardware energy measurement (RAPL) is unavailable: permission denied. "
+        "Using estimation instead. For RAPL on Linux, run with cap_sys_rawio "
+        "(e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.",
+        UserWarning,
+        stacklevel=2,
+    )
 

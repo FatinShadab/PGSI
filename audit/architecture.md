@@ -309,6 +309,7 @@ The following decisions were made in **Spike #4** (see **audit/spike_4_runs_and_
   - States that hardware energy measurement (RAPL) is unavailable and estimation will be used.
   - If the exception indicates permission denied (e.g. OSError errno 13 or message containing “permission”), add: suggest running with **cap_sys_rawio** or as root for RAPL on Linux.
 - **Optional:** Add **platform/hardware.py::warn_if_rapl_unavailable()** (or similar) that attempts a minimal RAPL read and warns with the above message on failure, so permission-related unavailability is explicit and testable.
+- **Implementation:** In place. **platform/hardware.py** defines **warn_if_rapl_unavailable(exc)** (and **_is_permission_related**); **measurement/energy.py** catches **PermissionError** in addition to **ImportError, OSError, RuntimeError** and calls **warn_if_rapl_unavailable(e)**. On Linux x86_64 only, permission-related failures produce a **UserWarning** mentioning **cap_sys_rawio** and **root**. Unit test: **tests/test_energy_crossplatform.py::test_rapl_permission_denied_emits_warning_with_cap_sys_rawio_or_root**.
 
 ---
 

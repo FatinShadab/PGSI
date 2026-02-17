@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Callable, Union
 from datetime import datetime
 
-from ..platform.hardware import get_system_info, get_cpu_info
+from ..platform.hardware import get_system_info, get_cpu_info, warn_if_rapl_unavailable
 from ..platform.detection import is_linux_intel, detect_platform
 from .estimators import estimate_energy
 
@@ -33,9 +33,10 @@ if is_linux_intel():
         pyRAPL = _pyrapl_module
         _pyrapl_available = True
         _pyrapl_setup_done = True
-    except (ImportError, OSError, RuntimeError):
+    except (ImportError, OSError, RuntimeError, PermissionError) as e:
         _pyrapl_available = False
         pyRAPL = None
+        warn_if_rapl_unavailable(e)
 
 
 def measure_energy_to_csv(

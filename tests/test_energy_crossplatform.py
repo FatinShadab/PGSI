@@ -6,7 +6,9 @@ with estimation on Windows/macOS and hardware measurement on Linux.
 """
 
 import csv
+import importlib
 import json
+import sys
 import warnings
 import pytest
 from pathlib import Path
@@ -16,6 +18,7 @@ from unittest.mock import patch, MagicMock
 from pgsi_analyzer.measurement import measure_energy_to_csv
 from pgsi_analyzer.measurement.energy import _pyrapl_available
 from pgsi_analyzer.platform.detection import is_linux_intel
+import pgsi_analyzer.measurement.energy as energy_module
 
 
 class TestCrossPlatformEnergy:
@@ -249,4 +252,19 @@ class TestCrossPlatformEnergy:
                 if len(rows) > 1:
                     dram_energy = float(rows[1][4])  # dram (uJ) column
                     assert dram_energy == 0.0
+
+    @patch('pgsi_analyzer.platform.hardware.is_linux_intel', return_value=True)
+    @patch('pgsi_analyzer.platform.detection.is_linux_intel', return_value=True)
+    def test_rapl_permission_denied_emits_warning_with_cap_sys_rawio_or_root(
+        self, mock_detection_linux, mock_hardware_linux
+    ):
+        """When pyRAPL.setup() fails with PermissionError on Linux, a UserWarning suggests cap_sys_rawio or root."""
+        fake_pyrapl = MagicMock()
+        fake_pyrapl.setup = MagicMock(side_effect=PermissionError("Permission denied"))
+        with patch.dict(sys.modules, {'pyRAPL': fake_pyrapl}):
+            with pytest.warns(UserWarning, match=r"cap_sys_rawio|root") as record:
+                importlib.reload(energy_module)
+        assert len(record) >= 1
+        msg = str(record[0].message)
+        assert "cap_sys_rawio" in msg or "root" in msg
 

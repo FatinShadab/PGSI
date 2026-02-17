@@ -183,11 +183,23 @@ Then run as your normal user:
 pgsi-analyzer benchmark run --algorithms hanoi --methods cpython --runs 5
 ```
 
-- If pyRAPL still cannot read RAPL, the tool falls back to **estimation** and (after Spike #4) will warn that hardware measurement is unavailable, possibly due to permissions. See **audit/spike_4_runs_and_permissions.md**.
+- If pyRAPL still cannot read RAPL, the tool falls back to **estimation** and will warn that hardware measurement is unavailable (see Troubleshooting below).
 
-### 3.3 Verifying hardware measurement
+### 3.3 Troubleshooting Permissions
 
-- After a run, check the energy CSV or `system_info_pyrapl.json` in the energy output folder. If **measurement_method** is **hardware**, RAPL was used. If **estimation**, the tool fell back (e.g. permissions or non-Linux).
+On **Linux x86_64**, if the tool cannot access Intel RAPL (e.g. you are not root and have not set `cap_sys_rawio`), it will emit an explicit **UserWarning** stating that RAPL is unavailable due to permission denied and that estimation will be used. The message includes actionable instructions:
+
+- **Grant capability (recommended):**  
+  `sudo setcap cap_sys_rawio+ep $(which python3)`  
+  (Replace with your interpreter path if needed.)
+- **Or run as root:**  
+  `sudo pgsi-analyzer benchmark run ...`
+
+The tool does **not** crash: it continues with estimation so that benchmarks still produce results. After a run, check `system_info_pyrapl.json` or the energy CSV: **measurement_method** will be **estimation** if RAPL was blocked. On **Windows** and **macOS**, no permission-specific message is shown (estimation is the normal mode).
+
+### 3.4 Verifying hardware measurement
+
+- After a run, check the energy CSV or `system_info_pyrapl.json` in the energy output folder. If **measurement_method** is **hardware**, RAPL was used. If **estimation**, the tool fell back (e.g. permissions or non-Linux). See **audit/spike_4_runs_and_permissions.md**.
 
 ---
 
