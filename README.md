@@ -279,9 +279,25 @@ If you use this work in your research, please cite:
 
 ## Additional Documentation
 
-For detailed setup instructions, troubleshooting, and advanced usage, see:
-- **[Getting Started Guide](docs/getting_started.md)**: Step-by-step setup and validation
-- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)**: Technical architecture details
+### Audit documentation suite (`/audit`)
+
+The **audit** folder contains structured documentation for users and contributors, produced from the project’s architecture and testing audits:
+
+| Document | Purpose |
+|----------|---------|
+| **[audit/usage_guide.md](audit/usage_guide.md)** | **Start here.** Step-by-step installation (CPython, PyPy, C compiler), the "Golden Path" CLI examples, hardware setup (Linux RAPL / cap_sys_rawio), and ToolPaths configuration (CLI, .env, environment variables). Run count and **PGSI_RUNS** are explained. |
+| **[audit/contributor_guide.md](audit/contributor_guide.md)** | Adding a new benchmark (folder structure, main.py decorators, registry entry), running pytest and interpreting platform-specific failures, and data contracts (required CSV columns). |
+| **[audit/functional_overview.md](audit/functional_overview.md)** | What the package does, user-facing features, main vs helper logic, and entry points. |
+| **[audit/architecture.md](audit/architecture.md)** | Process boundaries, data pipeline, internal CSV contracts, error propagation, ToolPaths, and Spike #4 design (PGSI_RUNS, RAPL permissions). |
+| **[audit/testing_and_health.md](audit/testing_and_health.md)** | Test inventory, coverage map, failure handling, known limitations, and green/red status. |
+| **[audit/spike_4_runs_and_permissions.md](audit/spike_4_runs_and_permissions.md)** | Design for deterministic run control (PGSI_RUNS) and RAPL permission feedback. |
+
+A new developer can set up the environment and run a standard benchmark using **usage_guide.md** alone; contributors adding benchmarks or running tests should use **contributor_guide.md** and the architecture/testing docs as needed.
+
+### Other docs
+
+- **[Getting Started Guide](docs/getting_started.md)** (if present): Step-by-step setup and validation
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** (if present): Technical architecture details
 
 ## License
 
