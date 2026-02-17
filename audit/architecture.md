@@ -16,7 +16,8 @@ src/pgsi_analyzer/
 │   └── main.py               # argparse, benchmark list/run → run_benchmark_suite
 ├── benchmark/
 │   ├── __init__.py
-│   ├── orchestrator.py       # run_benchmark_suite (build → execute → aggregate → combine → carbon → GreenScore)
+│   ├── orchestrator.py       # run_benchmark_suite (build → execute → aggregate → combine → carbon → GreenScore); delegates I/O to results_collector
+│   ├── results_collector.py  # ResultsCollector: collect_paths, prepare_aggregation_workspace, get_output_path
 │   ├── executor.py           # execute_benchmark, find_python_executable, prepare_py_compile; subprocess.run
 │   └── builder.py            # build_benchmark, build_cython, build_ctypes
 ├── benchmarks/
@@ -210,7 +211,8 @@ flowchart TB
         F --> G[Phase 1: Build]
         G --> H[Phase 2: Execute]
         H --> I[Phase 3: Collect CSV paths]
-        I --> J[Phase 4: Aggregate per method]
+        I --> RC[ResultsCollector]
+        RC --> J[Phase 4: Aggregate per method]
         J --> K[Phase 5: Combine]
         K --> L[Phase 6: Carbon]
         L --> M[Phase 7: GreenScore]
@@ -255,13 +257,13 @@ flowchart TB
 
 ---
 
-## 10. God-File Analysis: orchestrator.py and registry.py
+## 10. Orchestrator and ResultsCollector (Delegated Architecture)
 
-### 10.1 orchestrator.py
+### 10.1 orchestrator.py and results_collector.py
 
-- **Responsibilities:** Resolve algorithms/methods; drive build phase; drive execute phase; collect CSV paths; drive aggregation (including temp dir creation and copying); drive combination, carbon, and GreenScore; print progress and final summary.
-- **Length / complexity:** Single long function **run_benchmark_suite** (~220 lines) containing all seven phases and a lot of file/directory bookkeeping (method_energy_dirs, method_time_dirs, temp dirs, shutil.copy2).
-- **Verdict:** **Orchestrator is a “god” file** in the sense that it both coordinates the pipeline and implements phase-specific logistics (where CSVs live, how they are grouped, temp dir naming). It is the single place that knows the full pipeline and the layout of `output_dir`. Refactoring could: (1) extract “collect and group CSV paths” and “prepare per-method temp dirs” into a small helper or a dedicated “results collector” module; (2) keep **run_benchmark_suite** as a thin coordinator that calls discrete phase functions. The current design is workable but will grow harder to test and change as more output formats or phases are added.
+- **Orchestrator (benchmark/orchestrator.py):** Resolve algorithms/methods; drive build phase; drive execute phase; **delegate** CSV collection and path/layout to **ResultsCollector**; drive aggregation, combination, carbon, and GreenScore; print progress and final summary. **run_benchmark_suite** is a thin coordinator: it no longer imports **shutil** or **tempfile**; all file movement and output path resolution are handled by the collector.
+- **ResultsCollector (benchmark/results_collector.py):** **collect_paths(execution_results)** groups energy/time CSV paths by execution method. **prepare_aggregation_workspace(output_dir, method, raw_dirs, kind)** creates method-specific workspace dirs and copies raw CSVs into them. **get_output_path(output_dir, method, file_type)** centralizes naming for energy_aggregated.csv, time_aggregated.csv, energy_combined.csv, time_combined.csv, carbon_footprint.csv, and GreenScore.csv. The method name remains the parent directory name of aggregated files so combination models receive the expected layout.
+- **Verdict:** The previous god-file concern has been **addressed**: pipeline coordination is separated from filesystem I/O; the orchestrator delegates to ResultsCollector and no longer uses shutil/tempfile directly. Layout and collection logic can be tested in **results_collector.py** without touching the pipeline sequence.
 
 ### 10.2 registry.py
 

@@ -33,16 +33,11 @@ To **scale beyond the current 15 algorithms** (see **benchmarks/registry.py**) a
 
 ## 3. Technical Debt Inventory
 
-### 3.0 Completed (implemented post-audit)
+### 3.0 Completed / Addressed (implemented post-audit)
 
 - **RAPL permission warnings (Issue B):** Implemented. When RAPL is unavailable on Linux x86_64 due to permissions, the tool now emits a **UserWarning** with actionable advice (cap_sys_rawio or root). **platform/hardware.py::warn_if_rapl_unavailable()** centralizes the check; **measurement/energy.py** calls it from the pyRAPL setup exception handler. Fallback to estimation is unchanged; the tool does not crash. See **audit/architecture.md** §13.2 and **audit/usage_guide.md** §3.3 (Troubleshooting Permissions).
 
-### 3.1 High priority: Orchestrator God-file refactoring
-
-- **Location:** `src/pgsi_analyzer/benchmark/orchestrator.py`
-- **Issue:** A single long function **run_benchmark_suite** (~220 lines) both coordinates the seven-phase pipeline and implements filesystem logistics (collecting CSV paths, grouping by method, creating temp dirs, copying files, naming outputs). This mixes **pipeline logic** with **I/O and layout**.
-- **Impact:** Harder to test phases in isolation and to evolve output layout or add phases. Scaling to more algorithms or methods increases the cost of changes.
-- **Recommendation:** Decompose into a **PipelineManager** (orchestration and phase order) and a **FileSystemProvider** (or equivalent) that own path resolution, temp dir creation, and file copying. Keep **run_benchmark_suite** as a thin coordinator. See **Issue C** in **audit/next_steps_roadmap.md**.
+- **Orchestrator God-file (Issue C):** **Addressed.** **benchmark/results_collector.py** introduces **ResultsCollector** with **collect_paths**, **prepare_aggregation_workspace**, and **get_output_path**. The orchestrator no longer imports **shutil** or **tempfile**; it delegates all CSV collection, workspace preparation, and output path resolution to the collector. **run_benchmark_suite** is a thin coordinator; layout and I/O are testable in isolation. See **audit/architecture.md** §10.1.
 
 ### 3.2 Medium priority: Deterministic run control (PGSI_RUNS)
 

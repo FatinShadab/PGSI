@@ -211,6 +211,57 @@ class TestRunBenchmarkSuite:
             mock_carbon.assert_called()
             mock_greenscore.assert_called()
 
+    @patch('pgsi_analyzer.benchmark.orchestrator.build_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.execute_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.get_benchmark_path')
+    @patch('pgsi_analyzer.benchmark.orchestrator.requires_build')
+    def test_run_benchmark_suite_output_layout(
+        self, mock_requires_build, mock_get_path, mock_execute, mock_build, tmp_path
+    ):
+        """Output directory layout matches reference: method/energy_aggregated.csv, etc."""
+        mock_get_path.return_value = Path("/test/benchmark/main.py")
+        mock_requires_build.return_value = False
+        # Per-method dirs with valid raw CSVs so aggregation and combine run for real
+        for method in ("cpython", "pypy"):
+            energy_dir = tmp_path / f"energy_{method}"
+            time_dir = tmp_path / f"time_{method}"
+            energy_dir.mkdir()
+            time_dir.mkdir()
+            (energy_dir / "hanoi_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method\n0,a,1,100,0,estimation\n")
+            (energy_dir / "sieve_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method\n0,a,1,200,0,estimation\n")
+            (time_dir / "hanoi_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
+            (time_dir / "sieve_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,2.0\n")
+        call_index = [0]
+
+        def execute_side_effect(*args, **kwargs):
+            method = kwargs.get("method", "cpython")
+            alg = ["hanoi", "sieve"][call_index[0] // 2]
+            call_index[0] += 1
+            return {
+                "energy_csv": tmp_path / f"energy_{method}" / f"{alg}_cpython.csv",
+                "time_csv": tmp_path / f"time_{method}" / f"{alg}_cpython.csv",
+            }
+        mock_execute.side_effect = execute_side_effect
+        output_dir = tmp_path / "results"
+        output_dir.mkdir()
+
+        result = run_benchmark_suite(
+            algorithms=["hanoi", "sieve"],
+            methods=["cpython", "pypy"],
+            runs=2,
+            output_dir=output_dir,
+        )
+
+        assert result == output_dir / "GreenScore.csv"
+        assert (output_dir / "cpython" / "energy_aggregated.csv").exists()
+        assert (output_dir / "cpython" / "time_aggregated.csv").exists()
+        assert (output_dir / "pypy" / "energy_aggregated.csv").exists()
+        assert (output_dir / "pypy" / "time_aggregated.csv").exists()
+        assert (output_dir / "energy_combined.csv").exists()
+        assert (output_dir / "time_combined.csv").exists()
+        assert (output_dir / "carbon_footprint.csv").exists()
+        assert (output_dir / "GreenScore.csv").exists()
+
     @patch('pgsi_analyzer.benchmark.orchestrator.get_benchmark_path')
     @patch('pgsi_analyzer.benchmark.orchestrator.requires_build')
     def test_run_benchmark_suite_builds_required(self, mock_requires_build, mock_get_path):

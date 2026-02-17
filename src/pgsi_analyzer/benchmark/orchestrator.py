@@ -8,6 +8,8 @@ Coordinates the full benchmark execution pipeline:
 4. Combine methods
 5. Calculate carbon
 6. Calculate GreenScore
+
+File and path logistics are delegated to ResultsCollector.
 """
 
 import pandas as pd
@@ -15,6 +17,15 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from collections import defaultdict
 
+from .results_collector import (
+    ResultsCollector,
+    ENERGY_AGGREGATED,
+    TIME_AGGREGATED,
+    ENERGY_COMBINED,
+    TIME_COMBINED,
+    CARBON_FOOTPRINT,
+    GREENSCORE,
+)
 from ..benchmarks.registry import (
     BENCHMARKS,
     list_algorithms,
@@ -215,101 +226,58 @@ def run_benchmark_suite(
                 continue
     
     print()
-    
-    # Phase 3: Collect and organize raw CSVs
+
+    collector = ResultsCollector()
+
+    # Phase 3: Collect and organize raw CSVs (delegate to ResultsCollector)
     print("Phase 3: Collecting raw measurement data...")
-    
-    # Organize CSVs by method
-    method_energy_dirs: Dict[str, List[Path]] = defaultdict(list)
-    method_time_dirs: Dict[str, List[Path]] = defaultdict(list)
-    
-    for algorithm, methods_dict in execution_results.items():
-        for method, results in methods_dict.items():
-            if results.get("energy_csv"):
-                # Find the directory containing this CSV
-                energy_csv = results["energy_csv"]
-                energy_dir = energy_csv.parent
-                if energy_dir not in method_energy_dirs[method]:
-                    method_energy_dirs[method].append(energy_dir)
-            
-            if results.get("time_csv"):
-                time_csv = results["time_csv"]
-                time_dir = time_csv.parent
-                if time_dir not in method_time_dirs[method]:
-                    method_time_dirs[method].append(time_dir)
-    
-    # Phase 4: Aggregate per method
+    collected = collector.collect_paths(execution_results)
+    method_energy_dirs = collected["energy"]
+    method_time_dirs = collected["time"]
+
+    # Phase 4: Aggregate per method (workspace and paths via ResultsCollector)
     print("Phase 4: Aggregating results per method...")
-    
     aggregated_energy_files: Dict[str, Path] = {}
     aggregated_time_files: Dict[str, Path] = {}
-    
+
     for method in method_list:
-        # Aggregate energy
         if method in method_energy_dirs and method_energy_dirs[method]:
-            # Collect all CSVs from all directories for this method
-            all_energy_csvs = []
-            for energy_dir in method_energy_dirs[method]:
-                all_energy_csvs.extend(list(energy_dir.glob("*.csv")))
-            
-            if all_energy_csvs:
-                # Create a temporary directory with all CSVs for aggregation
-                temp_energy_dir = output_dir / f"temp_energy_{method}"
-                temp_energy_dir.mkdir(exist_ok=True)
-                
-                # Copy CSVs
-                import shutil
-                for csv_file in all_energy_csvs:
-                    shutil.copy2(csv_file, temp_energy_dir / csv_file.name)
-                
-                # Save aggregated file in method-named subdirectory
-                # (required by combine_energy_results which extracts method from parent dir)
-                method_dir = output_dir / method
-                method_dir.mkdir(exist_ok=True)
-                agg_energy_path = method_dir / "energy_aggregated.csv"
-                aggregate_energy(temp_energy_dir, output_path=agg_energy_path)
-                aggregated_energy_files[method] = agg_energy_path
-        
-        # Aggregate time
+            workspace_energy = collector.prepare_aggregation_workspace(
+                output_dir, method, method_energy_dirs[method], "energy"
+            )
+            agg_energy_path = collector.get_output_path(
+                output_dir, method=method, file_type=ENERGY_AGGREGATED
+            )
+            aggregate_energy(workspace_energy, output_path=agg_energy_path)
+            aggregated_energy_files[method] = agg_energy_path
+
         if method in method_time_dirs and method_time_dirs[method]:
-            all_time_csvs = []
-            for time_dir in method_time_dirs[method]:
-                all_time_csvs.extend(list(time_dir.glob("*.csv")))
-            
-            if all_time_csvs:
-                temp_time_dir = output_dir / f"temp_time_{method}"
-                temp_time_dir.mkdir(exist_ok=True)
-                
-                import shutil
-                for csv_file in all_time_csvs:
-                    shutil.copy2(csv_file, temp_time_dir / csv_file.name)
-                
-                # Save aggregated file in method-named subdirectory
-                method_dir = output_dir / method
-                method_dir.mkdir(exist_ok=True)
-                agg_time_path = method_dir / "time_aggregated.csv"
-                aggregate_time(temp_time_dir, output_path=agg_time_path)
-                aggregated_time_files[method] = agg_time_path
-    
+            workspace_time = collector.prepare_aggregation_workspace(
+                output_dir, method, method_time_dirs[method], "time"
+            )
+            agg_time_path = collector.get_output_path(
+                output_dir, method=method, file_type=TIME_AGGREGATED
+            )
+            aggregate_time(workspace_time, output_path=agg_time_path)
+            aggregated_time_files[method] = agg_time_path
+
     print()
     
     # Phase 5: Combine methods
     print("Phase 5: Combining results across methods...")
-    
+
     if not aggregated_energy_files or not aggregated_time_files:
         raise AnalysisError(
             "No aggregated data available. Check benchmark execution results."
         )
-    
-    # Combine energy results
-    energy_combined_path = output_dir / "energy_combined.csv"
+
+    energy_combined_path = collector.get_output_path(output_dir, file_type=ENERGY_COMBINED)
     combine_energy_results(
         list(aggregated_energy_files.values()),
         output_path=energy_combined_path,
     )
-    
-    # Combine time results
-    time_combined_path = output_dir / "time_combined.csv"
+
+    time_combined_path = collector.get_output_path(output_dir, file_type=TIME_COMBINED)
     combine_time_results(
         list(aggregated_time_files.values()),
         output_path=time_combined_path,
@@ -321,8 +289,8 @@ def run_benchmark_suite(
     
     # Phase 6: Calculate carbon footprint
     print("Phase 6: Calculating carbon footprint...")
-    
-    carbon_path = output_dir / "carbon_footprint.csv"
+
+    carbon_path = collector.get_output_path(output_dir, file_type=CARBON_FOOTPRINT)
     carbon_df = calculate_carbon_footprint(
         energy_combined_path,
         output_path=carbon_path,
@@ -334,11 +302,11 @@ def run_benchmark_suite(
     
     # Phase 7: Calculate GreenScore
     print("Phase 7: Calculating GreenScore...")
-    
+
     energy_df = pd.read_csv(energy_combined_path)
     time_df = pd.read_csv(time_combined_path)
-    
-    greenscore_path = output_dir / "GreenScore.csv"
+
+    greenscore_path = collector.get_output_path(output_dir, file_type=GREENSCORE)
     greenscore_df = calculate_greenscore(
         energy_df,
         time_df,
