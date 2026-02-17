@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 
 def count_flips(perm: List[int]) -> int:
@@ -80,12 +80,12 @@ def driver(n: int) -> Tuple[int, int]:
     return max_flips, count_max_flips
 
 
-@measure_energy_to_csv(n=__default__["fannkuch_redux"]["test_n"], csv_filename="fannkuch_redux_pycompile")
+@measure_energy_to_csv(n=get_measurement_runs("fannkuch_redux"), csv_filename="fannkuch_redux_pycompile")
 def run_energy_benchmark(n: int) -> None:
     driver(n)
 
 
-@measure_time_to_csv(n=__default__["fannkuch_redux"]["test_n"], csv_filename="fannkuch_redux_pycompile")
+@measure_time_to_csv(n=get_measurement_runs("fannkuch_redux"), csv_filename="fannkuch_redux_pycompile")
 def run_time_benchmark(n: int) -> None:
     driver(n)
 

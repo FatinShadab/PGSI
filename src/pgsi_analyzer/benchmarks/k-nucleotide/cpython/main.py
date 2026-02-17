@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 from collections import defaultdict
 from typing import Dict
@@ -65,12 +65,12 @@ def main() -> None:
     kmers: Dict[str, int] = count_kmers(sequence, k)
     print_kmer_frequencies(kmers)
 
-@measure_energy_to_csv(n=__default__["K_Nucleotide"]["test_n"], csv_filename="K_Nucleotide_cpython")
+@measure_energy_to_csv(n=get_measurement_runs("K_Nucleotide"), csv_filename="K_Nucleotide_cpython")
 def run_energy_benchmark() -> None:
     main()
     time.sleep(0.01)
 
-@measure_time_to_csv(n=__default__["K_Nucleotide"]["test_n"], csv_filename="K_Nucleotide_cpython")
+@measure_time_to_csv(n=get_measurement_runs("K_Nucleotide"), csv_filename="K_Nucleotide_cpython")
 def run_time_benchmark() -> None:
     main()
     time.sleep(0.01)

@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 from raw import n_queens
 
@@ -34,11 +34,11 @@ def main(n):
     for sol in solutions:
         print_board(sol)
         
-@measure_energy_to_csv(n=__default__["n-queens"]["test_n"], csv_filename="n_queens_cython")
+@measure_energy_to_csv(n=get_measurement_runs("n-queens"), csv_filename="n_queens_cython")
 def run_energy_benchmark(n: int) -> None:
     main(n)
 
-@measure_time_to_csv(n=__default__["n-queens"]["test_n"], csv_filename="n_queens_cython")
+@measure_time_to_csv(n=get_measurement_runs("n-queens"), csv_filename="n_queens_cython")
 def run_time_benchmark(n: int) -> None:
     main(n)
 

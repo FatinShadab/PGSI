@@ -19,7 +19,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 import argparse
 
 
@@ -60,14 +60,14 @@ def main(n):
     except ValueError as e:
         print(f"Error: {e}")
 
-@measure_energy_to_csv(n=__default__["hanoi"]["test_n"], csv_filename="hanoi_pycompile")
+@measure_energy_to_csv(n=get_measurement_runs("hanoi"), csv_filename="hanoi_pycompile")
 def run_energy_benchmark(n):
     """
     Run the energy benchmark for the Towers of Hanoi problem.
     """
     main(n)
 
-@measure_time_to_csv(n=__default__["hanoi"]["test_n"], csv_filename="hanoi_pycompile")
+@measure_time_to_csv(n=get_measurement_runs("hanoi"), csv_filename="hanoi_pycompile")
 def run_time_benchmark(n):
     """
     Run the time benchmark for the Towers of Hanoi problem.

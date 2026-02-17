@@ -1,5 +1,5 @@
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 import ctypes
 
@@ -53,11 +53,11 @@ def run_binary_trees(n: int):
     print(f"long lived tree of depth {max_depth}\t check: {lib.check_tree(long_lived_tree)}")
     lib.free_tree(long_lived_tree)
 
-@measure_energy_to_csv(n=__default__["binary-trees"]["test_n"], csv_filename="binary_trees_ctypes")
+@measure_energy_to_csv(n=get_measurement_runs("binary-trees"), csv_filename="binary_trees_ctypes")
 def run_energy_benchmark(n: int) -> None:
     run_binary_trees(n)
 
-@measure_time_to_csv(n=__default__["binary-trees"]["test_n"], csv_filename="binary_trees_ctypes")
+@measure_time_to_csv(n=get_measurement_runs("binary-trees"), csv_filename="binary_trees_ctypes")
 def run_time_benchmark(n: int) -> None:
     run_binary_trees(n)
 

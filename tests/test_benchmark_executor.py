@@ -150,6 +150,52 @@ class TestExecuteBenchmark:
 
     @patch('pgsi_analyzer.benchmark.executor.find_python_executable')
     @patch('subprocess.run')
+    @patch('pathlib.Path.exists')
+    @patch('pathlib.Path.is_file')
+    @patch('pathlib.Path.is_dir')
+    @patch('pathlib.Path.iterdir')
+    @patch('pathlib.Path.glob')
+    def test_execute_benchmark_sets_pgsi_runs_in_env(
+        self, mock_glob, mock_iterdir, mock_isdir, mock_isfile,
+        mock_exists, mock_run, mock_find_exe
+    ):
+        """Executor must set PGSI_RUNS in subprocess env so benchmark scripts use the run count."""
+        mock_find_exe.return_value = sys.executable
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        mock_isfile.return_value = True
+        mock_isdir.return_value = False
+        mock_exists.return_value = True
+        mock_iterdir.return_value = [
+            MagicMock(name="energy_benchmark", is_dir=lambda: True),
+            MagicMock(name="time_benchmark", is_dir=lambda: True),
+        ]
+
+        def mock_glob_side_effect(pattern):
+            if "energy_benchmark" in str(pattern):
+                return [Path("/test/energy_benchmark/hanoi_cpython.csv")]
+            if "time_benchmark" in str(pattern):
+                return [Path("/test/time_benchmark/hanoi_cpython.csv")]
+            return []
+
+        mock_glob.side_effect = mock_glob_side_effect
+
+        with patch('pandas.read_csv') as mock_read_csv:
+            mock_read_csv.return_value = MagicMock(columns=['package (uJ)'])
+
+            benchmark_path = Path("/test/benchmark/main.py")
+            execute_benchmark(
+                algorithm="hanoi",
+                method="cpython",
+                benchmark_path=benchmark_path,
+                runs=7,
+            )
+
+            mock_run.assert_called_once()
+            call_env = mock_run.call_args[1]["env"]
+            assert call_env.get("PGSI_RUNS") == "7"
+
+    @patch('pgsi_analyzer.benchmark.executor.find_python_executable')
+    @patch('subprocess.run')
     def test_execute_benchmark_execution_fails(self, mock_run, mock_find_exe):
         """Test benchmark execution failure handling."""
         mock_find_exe.return_value = sys.executable

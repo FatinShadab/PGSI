@@ -11,6 +11,7 @@ Environment Variables:
     PGSI_PYPY_PATH: Path to PyPy executable
     PGSI_CC_PATH: Path to C compiler (gcc/cl.exe)
     PGSI_PYTHON_PATH: Path to Python interpreter for benchmarks
+    PGSI_RUNS: Number of measurement runs per benchmark (set by executor when invoking subprocesses)
 """
 
 import os
@@ -40,6 +41,42 @@ class ToolPaths:
     python: Path
     pypy: Optional[Path] = None
     c_compiler: Optional[Path] = None
+
+
+# Default parameters per algorithm for benchmarks (test_n = measurement runs when PGSI_RUNS not set).
+# Benchmark scripts use DEFAULT_PARAMS[algorithm] for test_n and other algorithm-specific params.
+DEFAULT_PARAMS: dict = {
+    "binary-trees": {"test_n": 50, "depth": 10},
+    "fannkuch_redux": {"test_n": 50},
+    "fasta": {"test_n": 50, "k": 3, "query_sequence": "", "target_sequence": ""},
+    "hanoi": {"test_n": 50, "n": 15},
+    "K_Nucleotide": {"test_n": 50, "k": 2, "nucleotide_sequence_file": ""},
+    "knn": {"test_n": 50},
+    "mandelbrot": {"test_n": 50},
+    "nbody": {"test_n": 50, "G": 6.674e-11, "bodies": [], "dt": 0.01, "time_steps": 100},
+    "n-queens": {"test_n": 50, "n": 12},
+    "pi_digits": {"test_n": 50, "iterations": 1000},
+    "regex_redux": {"test_n": 50, "file_path": ""},
+    "reverse_complement": {"test_n": 50, "dna_sequence": ""},
+    "sieve": {"test_n": 50, "n": 1000},
+    "spectral-norm": {"test_n": 50, "matrix": [], "iterations": 10},
+    "strassen": {"test_n": 50, "A": [[0]], "B": [[0]]},
+}
+
+
+def get_measurement_runs(algorithm: str) -> int:
+    """
+    Return the number of measurement runs for benchmark decorators.
+    When the executor runs benchmark subprocesses, it sets PGSI_RUNS in the environment;
+    that value is the source of truth. Otherwise fall back to DEFAULT_PARAMS[algorithm]["test_n"] or 50.
+    """
+    default = 50
+    try:
+        if algorithm in DEFAULT_PARAMS and isinstance(DEFAULT_PARAMS[algorithm].get("test_n"), (int, float)):
+            default = int(DEFAULT_PARAMS[algorithm]["test_n"])
+    except (TypeError, KeyError):
+        pass
+    return int(os.environ.get("PGSI_RUNS", default))
 
 
 def _find_pypy_default() -> Optional[Path]:

@@ -116,7 +116,7 @@ pgsi-analyzer benchmark run --algorithms all --methods all --runs 50 --output re
 ### 2.5 Run count and PGSI_RUNS
 
 - **`--runs`** (e.g. `--runs 10`) sets how many measurement runs the orchestrator requests per benchmark. Default is **50**.
-- When **Spike #4** is implemented, the executor will pass this value into each benchmark subprocess via the **`PGSI_RUNS`** environment variable. Benchmark scripts will then use **PGSI_RUNS** as the **source of truth** for the decorator run count (e.g. for `measure_energy_to_csv(n=...)` and `measure_time_to_csv(n=...)`). Until then, run count inside subprocesses is still determined by the benchmarks’ own config (e.g. DEFAULT_PARAMS). See **audit/spike_4_runs_and_permissions.md** and **audit/architecture.md** (Section 13).
+- The **executor** sets **`PGSI_RUNS`** in each benchmark subprocess environment; **PGSI_RUNS** is the **source of truth** for run count inside subprocesses. Benchmark scripts use **get_measurement_runs(algorithm)** from **pgsi_analyzer.config**, which reads **PGSI_RUNS** (with fallback to **DEFAULT_PARAMS**) for `measure_energy_to_csv(n=...)` and `measure_time_to_csv(n=...)`. Implementation is complete. See **audit/spike_4_runs_and_permissions.md** and **audit/architecture.md** (Section 13).
 
 ### 2.6 Interpreting GreenScore.csv
 

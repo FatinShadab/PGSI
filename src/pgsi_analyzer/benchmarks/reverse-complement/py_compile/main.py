@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 from typing import List
 
@@ -37,11 +37,11 @@ def reverse_complement(dna_sequence: str) -> str:
     # Generate reverse complement using list comprehension (efficient in CPython)
     return "".join(complement_map[base] for base in reversed(dna_sequence))
 
-@measure_energy_to_csv(n=__default__["reverse_complement"]["test_n"], csv_filename="reverse_complement_pycompile")
+@measure_energy_to_csv(n=get_measurement_runs("reverse_complement"), csv_filename="reverse_complement_pycompile")
 def run_energy_benchmark(dna_sequence: str) -> None:
     reverse_complement(dna_sequence)
 
-@measure_time_to_csv(n=__default__["reverse_complement"]["test_n"], csv_filename="reverse_complement_pycompile")
+@measure_time_to_csv(n=get_measurement_runs("reverse_complement"), csv_filename="reverse_complement_pycompile")
 def run_time_benchmark(dna_sequence: str) -> None:
     reverse_complement(dna_sequence)
 

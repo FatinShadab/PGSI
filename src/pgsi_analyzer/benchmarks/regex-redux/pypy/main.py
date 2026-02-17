@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 
 def read_fasta_file(file_path: str) -> str:
@@ -82,14 +82,14 @@ def regex_redux(file_path: str) -> None:
     print("Cleaned Length:", len(sequence))
     print("Substituted Length:", len(modified_sequence))
 
-@measure_time_to_csv(n=__default__["regex_redux"]["test_n"], csv_filename="regex_redux_pypy")
+@measure_time_to_csv(n=get_measurement_runs("regex_redux"), csv_filename="regex_redux_pypy")
 def run_time_benchmark(file_path: str) -> None:
     """
     Measure and log the time it takes to run the Regex-Redux benchmark.
     """
     regex_redux(file_path)
 
-@measure_energy_to_csv(n=__default__["regex_redux"]["test_n"], csv_filename="regex_redux_pypy")
+@measure_energy_to_csv(n=get_measurement_runs("regex_redux"), csv_filename="regex_redux_pypy")
 def run_energy_benchmark(file_path: str) -> None:
     """
     Measure and log the energy consumption of the Regex-Redux benchmark.

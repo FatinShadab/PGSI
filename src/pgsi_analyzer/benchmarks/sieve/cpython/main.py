@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 from typing import List
 
@@ -44,11 +44,11 @@ def main(n: int):
     primes = PrimeSieve.sieve(n)
     print(f"Primes up to {n}: {primes}")
 
-@measure_energy_to_csv(n=__default__["sieve"]["test_n"], csv_filename="sieve_cpython")
+@measure_energy_to_csv(n=get_measurement_runs("sieve"), csv_filename="sieve_cpython")
 def run_energy_benchmark(n: int) -> None:
     main(n)
 
-@measure_time_to_csv(n=__default__["sieve"]["test_n"], csv_filename="sieve_cpython")
+@measure_time_to_csv(n=get_measurement_runs("sieve"), csv_filename="sieve_cpython")
 def run_time_benchmark(n: int) -> None:
     main(n)
 

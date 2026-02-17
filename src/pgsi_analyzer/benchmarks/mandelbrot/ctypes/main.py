@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 
 # Load the compiled shared library
@@ -38,13 +38,13 @@ def driver(width, height, max_iter, x_min, x_max, y_min, y_max):
     render_mandelbrot(data, max_iter)
     
 # Measure energy consumption and time taken for the Mandelbrot set generation
-@measure_energy_to_csv(n=__default__["mandelbrot"]["test_n"], csv_filename="mandelbrot_ctypes")
+@measure_energy_to_csv(n=get_measurement_runs("mandelbrot"), csv_filename="mandelbrot_ctypes")
 def run_energy_benchmark(width: int, height: int, max_iter: int, 
                          x_min: float, x_max: float, y_min: float, y_max: float) -> None:
     driver(width, height, max_iter, x_min, x_max, y_min, y_max)
 
 # Measure time taken for the Mandelbrot set generation
-@measure_time_to_csv(n=__default__["mandelbrot"]["test_n"], csv_filename="mandelbrot_ctypes")
+@measure_time_to_csv(n=get_measurement_runs("mandelbrot"), csv_filename="mandelbrot_ctypes")
 def run_time_benchmark(width: int, height: int, max_iter: int, 
                          x_min: float, x_max: float, y_min: float, y_max: float) -> None:
     driver(width, height, max_iter, x_min, x_max, y_min, y_max)

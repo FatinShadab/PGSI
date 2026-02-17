@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 import math
 from typing import List
@@ -64,11 +64,11 @@ def spectral_norm(matrix: List[List[int]], iterations=10):
     # Step 5: Calculate the spectral norm (largest singular value)
     return math.sqrt(sum(multiply_matrix_vector(matrix, u)[i] * u[i] for i in range(n)))
 
-@measure_energy_to_csv(n=__default__["spectral-norm"]["test_n"], csv_filename="spectral_norm_pypy")
+@measure_energy_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_pypy")
 def run_energy_benchmark(matrix: List[List[int]], iterations=10) -> None:
     spectral_norm(matrix, iterations)
 
-@measure_time_to_csv(n=__default__["spectral-norm"]["test_n"], csv_filename="spectral_norm_pypy")
+@measure_time_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_pypy")
 def run_time_benchmark(matrix: List[List[int]], iterations=10) -> None:
     spectral_norm(matrix, iterations)
     

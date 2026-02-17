@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 import ctypes
 from typing import List
@@ -25,11 +25,11 @@ def spectral_norm(matrix: List[List[int]], iterations: int = 10) -> float:
     c_matrix = (ctypes.c_double * (n * n))(*flat_matrix)
     return lib.spectral_norm(c_matrix, n, iterations)
 
-@measure_energy_to_csv(n=__default__["spectral-norm"]["test_n"], csv_filename="spectral_norm_ctypes")
+@measure_energy_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_ctypes")
 def run_energy_benchmark(matrix: List[List[int]], iterations=10) -> None:
     spectral_norm(matrix, iterations)
 
-@measure_time_to_csv(n=__default__["spectral-norm"]["test_n"], csv_filename="spectral_norm_ctypes")
+@measure_time_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_ctypes")
 def run_time_benchmark(matrix: List[List[int]], iterations=10) -> None:
     spectral_norm(matrix, iterations)
 

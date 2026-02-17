@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 import random
 from raw import KNN
@@ -31,11 +31,11 @@ def driver(num_samples: int, num_features: int, k: int) -> None:
     prediction_regression = knn_regressor.predict([[random.uniform(0, 100) for _ in range(num_features)]])
     print("Regression Prediction:", prediction_regression)
 
-@measure_energy_to_csv(n=__default__["knn"]["test_n"], csv_filename="knn_cython")
+@measure_energy_to_csv(n=get_measurement_runs("knn"), csv_filename="knn_cython")
 def run_energy_benchmark(num_samples: int, num_features: int, k: int) -> None:
     driver(num_samples, num_features, k)
 
-@measure_time_to_csv(n=__default__["knn"]["test_n"], csv_filename="knn_cython")
+@measure_time_to_csv(n=get_measurement_runs("knn"), csv_filename="knn_cython")
 def run_time_benchmark(num_samples: int, num_features: int, k: int) -> None:
     driver(num_samples, num_features, k)
 

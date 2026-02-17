@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 
 # Function to generate k-tuples from a sequence
@@ -144,13 +144,13 @@ def driver(k: int, query_sequence: str, target_sequence: str) -> None:
     print(f"Target:  {aligned_target}")
     
 # Benchmarking functions for energy
-@measure_energy_to_csv(n=__default__["fasta"]["test_n"], csv_filename="fasta_pypy")
+@measure_energy_to_csv(n=get_measurement_runs("fasta"), csv_filename="fasta_pypy")
 def run_energy_benchmark(k: int, query_sequence: str, target_sequence: str) -> None:
     driver(k, query_sequence, target_sequence)
     time.sleep(0.01) # Simulate some processing time
 
 # Benchmarking function for time
-@measure_time_to_csv(n=__default__["fasta"]["test_n"], csv_filename="fasta_pypy")
+@measure_time_to_csv(n=get_measurement_runs("fasta"), csv_filename="fasta_pypy")
 def run_time_benchmark(k: int, query_sequence: str, target_sequence: str) -> None:
     driver(k, query_sequence, target_sequence)
     time.sleep(0.01) # Simulate some processing time

@@ -161,7 +161,9 @@ def execute_benchmark(
     exec_env = os.environ.copy()
     if env:
         exec_env.update(env)
-    
+    # Pass run count to benchmark subprocess (source of truth for decorator n)
+    exec_env["PGSI_RUNS"] = str(runs)
+
     # Add package to Python path if needed
     package_root = Path(__file__).parent.parent.parent
     pythonpath = exec_env.get("PYTHONPATH", "")

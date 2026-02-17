@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 import ctypes
 from ctypes import c_int, c_char_p
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 import argparse
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
@@ -24,14 +24,14 @@ def driver(n):
 
     lib.towers_of_hanoi(n, source, auxiliary, target)
     
-@measure_energy_to_csv(n=__default__["hanoi"]["test_n"], csv_filename="hanoi_ctypes")
+@measure_energy_to_csv(n=get_measurement_runs("hanoi"), csv_filename="hanoi_ctypes")
 def run_energy_benchmark(n):
     """
     Run the energy benchmark for the Towers of Hanoi problem.
     """
     driver(n)
 
-@measure_time_to_csv(n=__default__["hanoi"]["test_n"], csv_filename="hanoi_ctypes")
+@measure_time_to_csv(n=get_measurement_runs("hanoi"), csv_filename="hanoi_ctypes")
 def run_time_benchmark(n):
     """
     Run the time benchmark for the Towers of Hanoi problem.

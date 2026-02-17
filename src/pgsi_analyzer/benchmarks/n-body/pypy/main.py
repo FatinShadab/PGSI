@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 
 # Constants
@@ -149,14 +149,14 @@ def driver(boides: List[Body], dt: float, num_steps: int) -> None:
     # Output the results
     print_trajectories(positions, len(bodies))
     
-@measure_time_to_csv(n=__default__["nbody"]["test_n"], csv_filename="nbody_pypy")
+@measure_time_to_csv(n=get_measurement_runs("nbody"), csv_filename="nbody_pypy")
 def run_time_benchmark(boides: List[Body], dt: float, num_steps: int) -> None:
     """
     Runs the N-Body simulation and measures the time taken.
     """
     driver(bodies, dt, num_steps)
 
-@measure_energy_to_csv(n=__default__["nbody"]["test_n"], csv_filename="nbody_pypy")
+@measure_energy_to_csv(n=get_measurement_runs("nbody"), csv_filename="nbody_pypy")
 def run_energy_benchmark(bodies: List[Body], dt: float, num_steps: int) -> None:
     """
     Runs the N-Body simulation and measures the energy consumed.

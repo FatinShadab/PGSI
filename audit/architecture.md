@@ -300,6 +300,7 @@ The following decisions were made in **Spike #4** (see **audit/spike_4_runs_and_
 - **Decision:** Use **environment variable PGSI_RUNS** (not argv).
 - **Executor:** In **execute_benchmark**, set **exec_env["PGSI_RUNS"] = str(runs)** before calling subprocess.run. No change to exec_args.
 - **Benchmarks / config:** Provide a helper (e.g. in config or shared module) that returns **int(os.environ.get("PGSI_RUNS", default))** where default is DEFAULT_PARAMS or a constant. Benchmark scripts use this helper for the measurement decorator `n` so that the orchestrator’s `--runs` value controls subprocess run count.
+- **Implementation:** In place: executor sets **PGSI_RUNS**; **config.get_measurement_runs(algorithm)** and **DEFAULT_PARAMS** exist; all benchmark **main.py** scripts use **get_measurement_runs** for decorator `n`.
 
 ### 13.2 RAPL Permission Awareness and User Feedback
 

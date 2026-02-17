@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
-from pgsi_analyzer.config import DEFAULT_PARAMS as __default__
+from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 import math
 
@@ -38,13 +38,13 @@ def compute_pi_gauss_legendre(iterations: int = 10) -> float:
     # Compute final Pi approximation
     return ((a + b) ** 2) / (4 * t)
 
-@measure_energy_to_csv(n=__default__["pi_digits"]["test_n"], csv_filename="pi_digits_pypy")
+@measure_energy_to_csv(n=get_measurement_runs("pi_digits"), csv_filename="pi_digits_pypy")
 def run_energy_benchmark(iterations: int) -> None:
     pi_approx : float = compute_pi_gauss_legendre(iterations)
     print(f"Computed Pi: {pi_approx}")
     time.sleep(0.01) # Simulate some processing time
 
-@measure_time_to_csv(n=__default__["pi_digits"]["test_n"], csv_filename="pi_digits_pypy")
+@measure_time_to_csv(n=get_measurement_runs("pi_digits"), csv_filename="pi_digits_pypy")
 def run_time_benchmark(iterations: int) -> None:
     pi_approx : float = compute_pi_gauss_legendre(iterations)
     print(f"Computed Pi: {pi_approx}")
