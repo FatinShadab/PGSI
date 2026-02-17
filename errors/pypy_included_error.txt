@@ -1,0 +1,123 @@
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ pgsi-analyzer benchmark run --algorithms hanoi binary-trees sieve --methods cpython ctypes pypy --runs 10 --output results-standered/
+Running benchmark suite:
+  Algorithms: 3 (binary-trees, hanoi, sieve...)
+  Methods: 3 (cpython, pypy, ctypes)
+  Runs per benchmark: 10
+  Output directory: results-standered
+
+Phase 1: Building benchmarks...
+  Building binary-trees/ctypes... ✓
+  Building hanoi/ctypes... ✓
+  Building sieve/ctypes... ✓
+
+Phase 2: Executing benchmarks...
+  [1/9] binary-trees/cpython... ✓
+  [2/9] binary-trees/pypy... ✗ Error: Benchmark execution error for binary-trees/pypy: Benchmark execution failed for binary-trees/pypy:
+Command: /usr/bin/pypy3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/pypy/main.py
+Return code: 1
+stdout: 
+stderr: Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/pypy/main.py", line 1, in <module>
+    from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/__init__.py", line 8, in <module>
+    from .energy import measure_energy_to_csv
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py", line 19, in <module>
+    from ..platform.hardware import get_system_info, get_cpu_info, warn_if_rapl_unavailable
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/platform/__init__.py", line 10, in <module>
+    from .hardware import get_cpu_info, get_system_info, check_rapl_support, warn_if_rapl_unavailable
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/platform/hardware.py", line 10, in <module>
+    import psutil
+ModuleNotFoundError: No module named 'psutil'
+
+  [3/9] binary-trees/ctypes... ✗ Error: Benchmark execution error for binary-trees/ctypes: Benchmark execution failed for binary-trees/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/ctypes/main.py", line 7, in <module>
+    if os.name == "nt":
+NameError: name 'os' is not defined
+
+  [4/9] hanoi/cpython... ✓
+  [5/9] hanoi/pypy... ✗ Error: Benchmark execution error for hanoi/pypy: Benchmark execution failed for hanoi/pypy:
+Command: /usr/bin/pypy3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/hanoi/pypy/main.py
+Return code: 1
+stdout: 
+stderr: Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/hanoi/pypy/main.py", line 20, in <module>
+    from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/__init__.py", line 8, in <module>
+    from .energy import measure_energy_to_csv
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py", line 19, in <module>
+    from ..platform.hardware import get_system_info, get_cpu_info, warn_if_rapl_unavailable
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/platform/__init__.py", line 10, in <module>
+    from .hardware import get_cpu_info, get_system_info, check_rapl_support, warn_if_rapl_unavailable
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/platform/hardware.py", line 10, in <module>
+    import psutil
+ModuleNotFoundError: No module named 'psutil'
+
+  [6/9] hanoi/ctypes... ✓
+  [7/9] sieve/cpython... ✓
+  [8/9] sieve/pypy... ✗ Error: Benchmark execution error for sieve/pypy: Benchmark execution failed for sieve/pypy:
+Command: /usr/bin/pypy3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/pypy/main.py
+Return code: 1
+stdout: 
+stderr: Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/pypy/main.py", line 5, in <module>
+    from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/__init__.py", line 8, in <module>
+    from .energy import measure_energy_to_csv
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py", line 19, in <module>
+    from ..platform.hardware import get_system_info, get_cpu_info, warn_if_rapl_unavailable
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/platform/__init__.py", line 10, in <module>
+    from .hardware import get_cpu_info, get_system_info, check_rapl_support, warn_if_rapl_unavailable
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/platform/hardware.py", line 10, in <module>
+    import psutil
+ModuleNotFoundError: No module named 'psutil'
+
+  [9/9] sieve/ctypes... ✗ Error: Benchmark execution error for sieve/ctypes: Benchmark execution failed for sieve/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/ctypes/main.py", line 13, in <module>
+    lib = ctypes.CDLL("./libprime_sieve.so")
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libprime_sieve.so: cannot open shared object file: No such file or directory
+
+
+Phase 3: Collecting raw measurement data...
+Phase 4: Aggregating results per method...
+
+Phase 5: Combining results across methods...
+  Energy combined: results-standered/energy_combined.csv
+  Time combined: results-standered/time_combined.csv
+
+Phase 6: Calculating carbon footprint...
+  Carbon footprint: results-standered/carbon_footprint.csv
+
+Phase 7: Calculating GreenScore...
+  GreenScore: results-standered/GreenScore.csv
+
+======================================================================
+Benchmark Suite Execution Complete
+======================================================================
+Final GreenScore ranking saved to: results-standered/GreenScore.csv
+
+Top 3 methods by GreenScore (lower is better):
+ method  energy_mean  time_mean  carbon_mean  green_score
+ ctypes     0.000000   0.000000     0.000000     0.000000
+cpython     0.333333   0.333333     0.333333     0.333333
+
+✅ Benchmark suite completed successfully!
+   GreenScore results: results-standered/GreenScore.csv
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ 

@@ -1,0 +1,20 @@
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ pgsi-analyzer benchmark run --algorithms hanoi binary-trees sieve --methods py_compile --runs 10 --output results-pycompile/
+\Running benchmark suite:
+  Algorithms: 3 (binary-trees, hanoi, sieve...)
+  Methods: 1 (py_compile)
+  Runs per benchmark: 10
+  Output directory: results-pycompile
+
+Phase 1: Building benchmarks...
+
+Phase 2: Executing benchmarks...
+  [1/3] binary-trees/py_compile... ✗ Error: main.py not found in /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/py_compile/main.py
+  [2/3] hanoi/py_compile... ✗ Error: main.py not found in /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/hanoi/py_compile/main.py
+  [3/3] sieve/py_compile... ✗ Error: main.py not found in /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/py_compile/main.py
+
+Phase 3: Collecting raw measurement data...
+Phase 4: Aggregating results per method...
+
+Phase 5: Combining results across methods...
+❌ No aggregated data available. Check benchmark execution results.
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ \

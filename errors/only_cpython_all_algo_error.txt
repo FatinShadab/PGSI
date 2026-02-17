@@ -1,0 +1,152 @@
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ pgsi-analyzer benchmark run --algorithms all  --methods cpython --runs 10 --output r
+esults-standered/
+Running benchmark suite:
+  Algorithms: 15 (binary-trees, fannkuch-redux, fasta...)
+  Methods: 1 (cpython)
+  Runs per benchmark: 10
+  Output directory: results-standered
+
+Phase 1: Building benchmarks...
+
+Phase 2: Executing benchmarks...
+  [1/15] binary-trees/cpython... ✓
+  [2/15] fannkuch-redux/cpython... ✗ Error: Benchmark execution error for fannkuch-redux/cpython: Benchmark execution failed for fannkuch-redux/cpython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fannkuch-redux/cpython/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fannkuch-redux/cpython/main.py", line 94, in <module>
+    n = __default__["fannkuch_redux"]["n"]
+KeyError: 'n'
+
+  [3/15] fasta/cpython... ✗ Error: Benchmark execution error for fasta/cpython: Benchmark execution failed for fasta/cpython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fasta/cpython/main.py
+Return code: 1
+stdout: Best alignment score: 0
+
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fasta/cpython/main.py:165: UserWarning: Hardware energy counters (pyRAPL) not available on linux. Using estimation based on CPU time and TDP. Estimated values may differ from actual hardware measurements.
+  run_energy_benchmark(k, query_sequence, target_sequence)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fasta/cpython/main.py", line 165, in <module>
+    run_energy_benchmark(k, query_sequence, target_sequence)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py", line 147, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fasta/cpython/main.py", line 149, in run_energy_benchmark
+    driver(k, query_sequence, target_sequence)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fasta/cpython/main.py", line 141, in driver
+    print(f"Best alignment starting at query position {alignment[0]} and target position {alignment[1]}")
+TypeError: 'NoneType' object is not subscriptable
+
+  [4/15] hanoi/cpython... ✓
+  [5/15] k-nucleotide/cpython... ✗ Error: Benchmark execution error for k-nucleotide/cpython: Benchmark execution failed for k-nucleotide/cpython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/cpython/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/cpython/main.py:79: UserWarning: Hardware energy counters (pyRAPL) not available on linux. Using estimation based on CPU time and TDP. Estimated values may differ from actual hardware measurements.
+  run_energy_benchmark()
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/cpython/main.py", line 79, in <module>
+    run_energy_benchmark()
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py", line 147, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/cpython/main.py", line 70, in run_energy_benchmark
+    main()
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/cpython/main.py", line 64, in main
+    sequence: str = read_sequence(file_path)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/cpython/main.py", line 24, in read_sequence
+    with open(file_path, 'r') as file:
+FileNotFoundError: [Errno 2] No such file or directory: ''
+
+  [6/15] knn/cpython... ✗ Error: Benchmark execution error for knn/cpython: Benchmark execution failed for knn/cpython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/knn/cpython/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/knn/cpython/main.py", line 112, in <module>
+    num_samples = __default__["knn"]["num_samples"]
+KeyError: 'num_samples'
+
+  [7/15] mandelbrot/cpython... ✗ Error: Benchmark execution error for mandelbrot/cpython: Benchmark execution failed for mandelbrot/cpython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/mandelbrot/cpython/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/mandelbrot/cpython/main.py", line 116, in <module>
+    width, height = __default__["mandelbrot"]["width"], __default__["mandelbrot"]["height"]
+KeyError: 'width'
+
+  [8/15] n-body/cpython... ✓
+  [9/15] n-queens/cpython... ✓
+  [10/15] pi-digits/cpython... ✓
+  [11/15] regex-redux/cpython... ✗ Error: Benchmark execution error for regex-redux/cpython: Benchmark execution failed for regex-redux/cpython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/cpython/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/cpython/main.py:107: UserWarning: Hardware energy counters (pyRAPL) not available on linux. Using estimation based on CPU time and TDP. Estimated values may differ from actual hardware measurements.
+  run_energy_benchmark(file_path)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/cpython/main.py", line 107, in <module>
+    run_energy_benchmark(file_path)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py", line 147, in wrapper
+    result = func(*args, **kwargs)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/cpython/main.py", line 99, in run_energy_benchmark
+    regex_redux(file_path)
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/cpython/main.py", line 47, in regex_redux
+    sequence = read_fasta_file(file_path).lower()
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/cpython/main.py", line 18, in read_fasta_file
+    with open(file_path, 'r') as file:
+FileNotFoundError: [Errno 2] No such file or directory: ''
+
+  [12/15] reverse-complement/cpython... ✓
+  [13/15] sieve/cpython... ✓
+  [14/15] spectral-norm/cpython... ✓
+  [15/15] strassen/cpython... ✓
+
+Phase 3: Collecting raw measurement data...
+Phase 4: Aggregating results per method...
+
+Phase 5: Combining results across methods...
+  Energy combined: results-standered/energy_combined.csv
+  Time combined: results-standered/time_combined.csv
+
+Phase 6: Calculating carbon footprint...
+  Carbon footprint: results-standered/carbon_footprint.csv
+
+Phase 7: Calculating GreenScore...
+  GreenScore: results-standered/GreenScore.csv
+
+======================================================================
+Benchmark Suite Execution Complete
+======================================================================
+Final GreenScore ranking saved to: results-standered/GreenScore.csv
+
+Top 3 methods by GreenScore (lower is better):
+ method  energy_mean  time_mean  carbon_mean  green_score
+cpython          0.0        0.0          0.0          0.0
+
+✅ Benchmark suite completed successfully!
+   GreenScore results: results-standered/GreenScore.csv
