@@ -291,4 +291,24 @@ flowchart TB
 
 ---
 
-This document accurately reflects the src/ layout, how data moves between the main process and benchmark subprocesses, and maps all custom exceptions to their raising modules. The Mermaid diagram and ToolPaths section satisfy the documentation requirements for Issue #2.
+## 13. Spike #4: Finalized Design Decisions (Runs & RAPL Permissions)
+
+The following decisions were made in **Spike #4** (see **audit/spike_4_runs_and_permissions.md**) and are the target design for implementation.
+
+### 13.1 Passing Run Count to Benchmark Subprocesses
+
+- **Decision:** Use **environment variable PGSI_RUNS** (not argv).
+- **Executor:** In **execute_benchmark**, set **exec_env["PGSI_RUNS"] = str(runs)** before calling subprocess.run. No change to exec_args.
+- **Benchmarks / config:** Provide a helper (e.g. in config or shared module) that returns **int(os.environ.get("PGSI_RUNS", default))** where default is DEFAULT_PARAMS or a constant. Benchmark scripts use this helper for the measurement decorator `n` so that the orchestrator’s `--runs` value controls subprocess run count.
+
+### 13.2 RAPL Permission Awareness and User Feedback
+
+- **Decision:** Do not change the fallback behavior (estimation when RAPL unavailable). Improve **user-visible feedback** when RAPL setup fails.
+- **measurement/energy.py:** In the existing `except (ImportError, OSError, RuntimeError)` block at pyRAPL setup, emit a **warnings.warn** that:
+  - States that hardware energy measurement (RAPL) is unavailable and estimation will be used.
+  - If the exception indicates permission denied (e.g. OSError errno 13 or message containing “permission”), add: suggest running with **cap_sys_rawio** or as root for RAPL on Linux.
+- **Optional:** Add **platform/hardware.py::warn_if_rapl_unavailable()** (or similar) that attempts a minimal RAPL read and warns with the above message on failure, so permission-related unavailability is explicit and testable.
+
+---
+
+This document accurately reflects the src/ layout, how data moves between the main process and benchmark subprocesses, and maps all custom exceptions to their raising modules. The Mermaid diagram and ToolPaths section satisfy the documentation requirements for Issue #2. Section 13 records the finalized Spike #4 design for runs and RAPL permissions.

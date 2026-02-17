@@ -458,6 +458,27 @@ class TestCombination:
             
             assert result['algorithm'].iloc[0] == 'bubble_sort'
 
+    def test_combine_energy_results_missing_columns_raises(self):
+        """Test that combine_energy_results raises ValueError when CSV lacks required columns."""
+        with TemporaryDirectory() as tmpdir:
+            cpython_dir = Path(tmpdir) / "cpython"
+            cpython_dir.mkdir()
+            # Missing 'average_package (uJ)' and/or 'filename'
+            bad_df = pd.DataFrame({"wrong_col": [1, 2]})
+            bad_df.to_csv(cpython_dir / "energy_avg.csv", index=False)
+            with pytest.raises(ValueError, match="filename.*average_package"):
+                combine_energy_results([cpython_dir / "energy_avg.csv"], Path(tmpdir) / "out.csv")
+
+    def test_combine_time_results_missing_columns_raises(self):
+        """Test that combine_time_results raises ValueError when CSV lacks required columns."""
+        with TemporaryDirectory() as tmpdir:
+            cpython_dir = Path(tmpdir) / "cpython"
+            cpython_dir.mkdir()
+            bad_df = pd.DataFrame({"wrong_col": [1.0]})
+            bad_df.to_csv(cpython_dir / "time_avg.csv", index=False)
+            with pytest.raises(ValueError, match="filename.*execution_time"):
+                combine_time_results([cpython_dir / "time_avg.csv"], Path(tmpdir) / "out.csv")
+
 
 class TestModelsIntegration:
     """Integration tests for models module."""

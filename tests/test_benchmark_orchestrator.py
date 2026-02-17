@@ -12,7 +12,7 @@ from pgsi_analyzer.benchmark.orchestrator import (
     resolve_methods,
     run_benchmark_suite,
 )
-from pgsi_analyzer.utils import AnalysisError
+from pgsi_analyzer.utils import AnalysisError, MeasurementError
 
 
 class TestResolveAlgorithms:
@@ -282,4 +282,65 @@ class TestRunBenchmarkSuite:
                 methods=["invalid-method"],
                 runs=5,
             )
+
+    @patch('pgsi_analyzer.benchmark.orchestrator.get_benchmark_path')
+    @patch('pgsi_analyzer.benchmark.orchestrator.requires_build')
+    @patch('pgsi_analyzer.benchmark.orchestrator.build_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.execute_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.aggregate_energy')
+    @patch('pgsi_analyzer.benchmark.orchestrator.aggregate_time')
+    @patch('pgsi_analyzer.benchmark.orchestrator.combine_energy_results')
+    @patch('pgsi_analyzer.benchmark.orchestrator.combine_time_results')
+    @patch('pgsi_analyzer.benchmark.orchestrator.calculate_carbon_footprint')
+    @patch('pgsi_analyzer.benchmark.orchestrator.calculate_greenscore')
+    @patch('pandas.read_csv')
+    @patch('shutil.copy2')
+    def test_run_benchmark_suite_continues_after_benchmark_crash(
+        self, _mock_copy2, mock_read_csv, mock_greenscore, mock_carbon,
+        mock_combine_time, mock_combine_energy, mock_agg_time, mock_agg_energy,
+        mock_execute, mock_build, mock_requires_build, mock_get_path,
+        tmp_path
+    ):
+        """Test that a benchmark crash (MeasurementError) is caught and suite continues."""
+        mock_get_path.return_value = Path("/test/benchmark/main.py")
+        mock_requires_build.return_value = False
+        mock_read_csv.side_effect = [
+            pd.DataFrame({"algorithm": ["sieve"], "cpython": [1000.0]}),
+            pd.DataFrame({"algorithm": ["sieve"], "cpython": [1.0]}),
+        ]
+        mock_greenscore.return_value = pd.DataFrame({"method": ["cpython"], "green_score": [0.5]})
+
+        energy_dir = tmp_path / "energy_benchmark"
+        time_dir = tmp_path / "time_benchmark"
+        energy_dir.mkdir()
+        time_dir.mkdir()
+        (energy_dir / "sieve_cpython.csv").write_text("package (uJ)\n1000\n")
+        (time_dir / "sieve_cpython.csv").write_text("execution_time (s)\n1.0\n")
+        success_result = {
+            "energy_csv": energy_dir / "sieve_cpython.csv",
+            "time_csv": time_dir / "sieve_cpython.csv",
+        }
+        call_count = [0]
+
+        def execute_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise MeasurementError("Benchmark execution failed for hanoi/cpython")
+            return success_result
+
+        mock_execute.side_effect = execute_side_effect
+        output_dir = tmp_path / "results"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        result = run_benchmark_suite(
+            algorithms=["hanoi", "sieve"],
+            methods=["cpython"],
+            runs=5,
+            output_dir=output_dir,
+        )
+
+        assert result is not None
+        assert result.name == "GreenScore.csv"
+        assert mock_execute.call_count == 2
+        mock_greenscore.assert_called_once()
 
