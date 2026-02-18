@@ -55,11 +55,11 @@ if __name__ == "__main__":
             np.array(body["position"], dtype=np.float64),
             np.array(body["velocity"], dtype=np.float64)
         )
-        for body in __default__["nbody"]["bodies"]
+        for body in __default__["nbody"].get("bodies", [])
     ]
 
-    dt = __default__["nbody"]["dt"]
-    num_steps = __default__["nbody"]["time_steps"]
+    dt = __default__["nbody"].get("dt", 0.01)
+    num_steps = __default__["nbody"].get("time_steps", 100)
 
     # Run the energy benchmark
     run_energy_benchmark(bodies, dt, num_steps)

@@ -138,10 +138,13 @@ def driver(k: int, query_sequence: str, target_sequence: str) -> None:
 
     # Output the results
     print(f"Best alignment score: {score}")
-    print(f"Best alignment starting at query position {alignment[0]} and target position {alignment[1]}")
-    print("\nAligned Sequences:")
-    print(f"Query:   {aligned_query}")
-    print(f"Target:  {aligned_target}")
+    if alignment is not None and aligned_query is not None and aligned_target is not None:
+        print(f"Best alignment starting at query position {alignment[0]} and target position {alignment[1]}")
+        print("\nAligned Sequences:")
+        print(f"Query:   {aligned_query}")
+        print(f"Target:  {aligned_target}")
+    else:
+        print("No alignment found (empty or invalid sequences).")
     
 # Benchmarking functions for energy
 @measure_energy_to_csv(n=get_measurement_runs("fasta"), csv_filename="fasta_pycompile")

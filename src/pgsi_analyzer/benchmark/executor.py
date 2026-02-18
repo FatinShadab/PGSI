@@ -60,15 +60,20 @@ def prepare_py_compile(benchmark_path: Path, tool_paths: Optional[ToolPaths] = N
     Pre-compile Python file to .pyc for py_compile method.
     
     Args:
-        benchmark_path: Path to main.py file
+        benchmark_path: Path to main.py file or to the py_compile directory
         tool_paths: Optional ToolPaths configuration for Python executable
         
     Returns:
         Path to compiled .pyc file (or main.py if compilation fails)
     """
-    main_py = benchmark_path / "main.py"
+    if benchmark_path.is_file() and benchmark_path.name == "main.py":
+        bench_dir = benchmark_path.parent
+        main_py = benchmark_path
+    else:
+        bench_dir = benchmark_path
+        main_py = benchmark_path / "main.py"
     if not main_py.exists():
-        raise FileNotFoundError(f"main.py not found in {benchmark_path}")
+        raise FileNotFoundError(f"main.py not found in {bench_dir}")
     
     # Use configured Python or default
     python_exe = str(tool_paths.python) if tool_paths else sys.executable
@@ -76,7 +81,7 @@ def prepare_py_compile(benchmark_path: Path, tool_paths: Optional[ToolPaths] = N
     # Compile to .pyc
     result = subprocess.run(
         [python_exe, "-m", "py_compile", str(main_py)],
-        cwd=str(benchmark_path),
+        cwd=str(bench_dir),
         capture_output=True,
         text=True,
     )
@@ -87,7 +92,7 @@ def prepare_py_compile(benchmark_path: Path, tool_paths: Optional[ToolPaths] = N
     
     # Find the compiled .pyc file
     # Python 3.8+ uses __pycache__ directory
-    pycache = benchmark_path / "__pycache__"
+    pycache = bench_dir / "__pycache__"
     if pycache.exists():
         pyc_files = list(pycache.glob("main*.pyc"))
         if pyc_files:

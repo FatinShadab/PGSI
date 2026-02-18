@@ -51,13 +51,12 @@ def run_time_benchmark(width: int, height: int, max_iter: int,
 
     
 if __name__ == "__main__":
-    width, height = __default__["mandelbrot"]["width"], __default__["mandelbrot"]["height"]
-    max_iter = __default__["mandelbrot"]["max_iter"]  # Maximum iterations per point
+    m = __default__["mandelbrot"]
+    width, height = m.get("width", 1000), m.get("height", 1000)
+    max_iter = m.get("max_iter", 100)
     x_min, x_max, y_min, y_max = (
-        __default__["mandelbrot"]["x_min"],
-        __default__["mandelbrot"]["x_max"],
-        __default__["mandelbrot"]["y_min"],
-        __default__["mandelbrot"]["y_max"]
+        m.get("x_min", -2.5), m.get("x_max", 1.0),
+        m.get("y_min", -1.25), m.get("y_max", 1.25)
     )
 
     # Run energy and time benchmarks

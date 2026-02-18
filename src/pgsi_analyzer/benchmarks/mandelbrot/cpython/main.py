@@ -113,14 +113,14 @@ def run_time_benchmark(width: int, height: int, max_iter: int,
 
 if __name__ == "__main__":
     # Define grid size and Mandelbrot range
-    width, height = __default__["mandelbrot"]["width"], __default__["mandelbrot"]["height"]
-    max_iter = __default__["mandelbrot"]["max_iter"]  # Maximum iterations per point
-    x_min, x_max, y_min, y_max = (
-        __default__["mandelbrot"]["x_min"],
-        __default__["mandelbrot"]["x_max"],
-        __default__["mandelbrot"]["y_min"],
-        __default__["mandelbrot"]["y_max"]
-    )
+    m = __default__["mandelbrot"]
+    width = m.get("width", 1000)
+    height = m.get("height", 1000)
+    max_iter = m.get("max_iter", 100)
+    x_min = m.get("x_min", -2.5)
+    x_max = m.get("x_max", 1.0)
+    y_min = m.get("y_min", -1.25)
+    y_max = m.get("y_max", 1.25)
     
     # Run energy and time benchmarks
     run_energy_benchmark(width, height, max_iter, x_min, x_max, y_min, y_max)

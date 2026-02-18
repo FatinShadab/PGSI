@@ -10,7 +10,7 @@ from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_
 
 
 # Constants
-G = __default__["nbody"]["G"]  # Gravitational constant (m^3 kg^-1 s^-2)
+G = __default__["nbody"].get("G", 6.674e-11)  # Gravitational constant (m^3 kg^-1 s^-2)
 
 class Body:
     """
@@ -167,12 +167,12 @@ def run_energy_benchmark(bodies: List[Body], dt: float, num_steps: int) -> None:
 if __name__ == "__main__":
     bodies = [
         Body(body["mass"], body["position"], body["velocity"])
-        for body in __default__["nbody"]["bodies"]
+        for body in __default__["nbody"].get("bodies", [])
     ]
 
     # Run the simulation
-    dt = __default__["nbody"]["dt"]
-    num_steps = __default__["nbody"]["time_steps"]
+    dt = __default__["nbody"].get("dt", 0.01)
+    num_steps = __default__["nbody"].get("time_steps", 100)
 
     # Run the energy benchmark
     run_energy_benchmark(bodies, dt, num_steps)

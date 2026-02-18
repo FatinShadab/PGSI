@@ -19,8 +19,8 @@ def run_time_benchmark(matrix: List[List[int]], iterations=10) -> None:
     
 
 if __name__ == "__main__":
-    A = __default__["spectral-norm"]["matrix"]
-    itr = __default__["spectral-norm"]["iterations"]
+    A = __default__["spectral-norm"].get("matrix", [])
+    itr = __default__["spectral-norm"].get("iterations", 10)
     
     # Run the benchmarks
     run_energy_benchmark(A, itr)

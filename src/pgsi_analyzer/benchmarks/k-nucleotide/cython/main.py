@@ -12,8 +12,13 @@ from typing import Dict
 
 from raw import count_kmers
 
+# Minimal dummy DNA when no input file is provided
+_DUMMY_DNA_SEQUENCE = "ACGT" * 500
+
+
 def read_sequence(file_path: str) -> str:
     """Reads the DNA sequence from a file, ignoring headers.
+    If file_path is empty or the file is missing, returns a minimal dummy sequence.
     
     Args:
         file_path (str): Path to the input file containing the DNA sequence.
@@ -21,6 +26,8 @@ def read_sequence(file_path: str) -> str:
     Returns:
         str: The processed DNA sequence as a single string.
     """
+    if not file_path or not os.path.isfile(file_path):
+        return _DUMMY_DNA_SEQUENCE
     sequence: list[str] = []
     with open(file_path, 'r') as file:
         for line in file:
@@ -40,8 +47,8 @@ def print_kmer_frequencies(kmers: Dict[str, int]) -> None:
 
 def main() -> None:
     """Main function to execute the K-Nucleotide frequency analysis."""    
-    file_path: str = __default__["K_Nucleotide"]["nucleotide_sequence_file"]
-    k: int = __default__["K_Nucleotide"]["k"]
+    file_path: str = __default__["K_Nucleotide"].get("nucleotide_sequence_file", "") or ""
+    k: int = __default__["K_Nucleotide"].get("k", 2)
     
     sequence: str = read_sequence(file_path)
     kmers: Dict[str, int] = count_kmers(sequence, k)

@@ -109,9 +109,9 @@ def run_time_benchmark(num_samples: int, num_features: int, k: int) -> None:
     
 
 if __name__ == "__main__":
-    num_samples = __default__["knn"]["num_samples"]
-    num_features = __default__["knn"]["num_features"]
-    k = __default__["knn"]["k"]
+    num_samples = __default__["knn"].get("num_samples", 1000)
+    num_features = __default__["knn"].get("num_features", 10)
+    k = __default__["knn"].get("k", 5)
 
     run_energy_benchmark(num_samples, num_features, k)
     run_time_benchmark(num_samples, num_features, k)

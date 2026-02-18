@@ -85,10 +85,10 @@ if __name__ == "__main__":
             position=(ctypes.c_double * 3)(*body["position"]),
             velocity=(ctypes.c_double * 3)(*body["velocity"])
         )
-        for body in input_data["bodies"]
+        for body in input_data.get("bodies", [])
     ]
-    dt = input_data["dt"]
-    num_steps = input_data["time_steps"]
+    dt = input_data.get("dt", 0.01)
+    num_steps = input_data.get("time_steps", 100)
 
     run_energy_benchmark(bodies, dt, num_steps)
     run_time_benchmark(bodies, dt, num_steps)

@@ -16,9 +16,12 @@ def driver(k, query, target):
     score, alignment, aligned_q, aligned_t = fasta_alignment(query, target, k)
 
     print("Score:", score)
-    print("Alignment starts at:", alignment)
-    print("Query:", aligned_q)
-    print("Target:", aligned_t)
+    if alignment is not None and aligned_q is not None and aligned_t is not None:
+        print("Alignment starts at:", alignment)
+        print("Query:", aligned_q)
+        print("Target:", aligned_t)
+    else:
+        print("No alignment found (empty or invalid sequences).")
     
 
 # Benchmarking functions for energy

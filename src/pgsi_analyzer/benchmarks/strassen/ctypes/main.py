@@ -69,8 +69,8 @@ def run_time_benchmark(A: List[List[int]], B: List[List[int]]) -> None:
     main(A, B)
 
 if __name__ == "__main__":
-    A = __default__["strassen"]["A"]
-    B = __default__["strassen"]["B"]
+    A = __default__["strassen"].get("A", [[0]])
+    B = __default__["strassen"].get("B", [[0]])
     
     # Run the benchmarks
     run_energy_benchmark(A, B)
