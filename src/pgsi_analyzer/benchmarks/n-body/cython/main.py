@@ -48,14 +48,24 @@ def run_energy_benchmark(bodies: List[Body], dt: float, num_steps: int) -> None:
     driver(bodies, dt, num_steps)
 
 
+# Minimal default bodies so Cython memoryview shape is valid (num_bodies >= 1)
+_DEFAULT_BODIES = [
+    {"mass": 1.0, "position": [0.0, 0.0, 0.0], "velocity": [0.0, 0.0, 0.0]},
+    {"mass": 1.0, "position": [1.0, 0.0, 0.0], "velocity": [0.0, 0.0, 0.0]},
+]
+
+
 if __name__ == "__main__":
+    bodies_config = __default__["nbody"].get("bodies", [])
+    if not bodies_config:
+        bodies_config = _DEFAULT_BODIES
     bodies = [
         Body(
             body["mass"],
             np.array(body["position"], dtype=np.float64),
             np.array(body["velocity"], dtype=np.float64)
         )
-        for body in __default__["nbody"].get("bodies", [])
+        for body in bodies_config
     ]
 
     dt = __default__["nbody"].get("dt", 0.01)

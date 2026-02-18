@@ -53,7 +53,16 @@ DEFAULT_PARAMS: dict = {
     "K_Nucleotide": {"test_n": 50, "k": 2, "nucleotide_sequence_file": ""},
     "knn": {"test_n": 50, "num_samples": 1000, "num_features": 10, "k": 5},
     "mandelbrot": {"test_n": 50, "width": 1000, "height": 1000, "max_iter": 100, "x_min": -2.5, "x_max": 1.0, "y_min": -1.25, "y_max": 1.25},
-    "nbody": {"test_n": 50, "G": 6.674e-11, "bodies": [], "dt": 0.01, "time_steps": 100},
+    "nbody": {
+        "test_n": 50,
+        "G": 6.674e-11,
+        "bodies": [
+            {"mass": 1.0, "position": [0.0, 0.0, 0.0], "velocity": [0.0, 0.0, 0.0]},
+            {"mass": 1.0, "position": [1.0, 0.0, 0.0], "velocity": [0.0, 0.0, 0.0]},
+        ],
+        "dt": 0.01,
+        "time_steps": 100,
+    },
     "n-queens": {"test_n": 50, "n": 12},
     "pi_digits": {"test_n": 50, "iterations": 1000},
     "regex_redux": {"test_n": 50, "file_path": ""},
