@@ -3,18 +3,26 @@ import time
 from typing import List, Tuple
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
 from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 
+# Minimal dummy FASTA sequence when no input file is provided (e.g. file_path empty or missing)
+_DUMMY_FASTA_SEQUENCE = "agggtaaa|tttaccct" * 100
+
+
 def read_fasta_file(file_path: str) -> str:
     """
     Reads a FASTA file and returns the DNA sequence as a single string.
     Removes descriptions and line breaks.
+    If file_path is empty or the file is missing, returns a minimal dummy sequence
+    so the benchmark can run without failing.
     """
+    if not file_path or not os.path.isfile(file_path):
+        return _DUMMY_FASTA_SEQUENCE
     with open(file_path, 'r') as file:
         content = file.read()
 
@@ -101,7 +109,7 @@ def run_energy_benchmark(file_path: str) -> None:
 
 
 if __name__ == "__main__":
-    file_path = __default__["regex_redux"]["file_path"]
+    file_path = __default__["regex_redux"].get("file_path", "") or ""
 
     # You can change this to driver(file_path) if you want plain output
     run_energy_benchmark(file_path)

@@ -1,3 +1,4 @@
+import os
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 

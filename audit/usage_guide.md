@@ -46,10 +46,27 @@ Core dependencies (installed automatically) include: `pandas`, `matplotlib`, `nu
   export PGSI_PYPY_PATH=/path/to/pypy3
   ```
 
-### 1.5 C compiler (for `cython` and `ctypes` methods)
+- **PyPy has its own package ecosystem.** Install benchmark dependencies with PyPy’s pip so that the `pypy` method can run correctly:
+
+  ```bash
+  pypy3 -m pip install pandas psutil numpy
+  ```
+
+  (Or use `pypy -m pip` if your executable is `pypy`.) Without this step, runs using the `pypy` method may fail with missing-module errors.
+
+### 1.5 C compiler and Python headers (for `cython` and `ctypes` methods)
 
 - **Linux / macOS:** Install `gcc` or `clang` (e.g. `sudo apt install build-essential` on Debian/Ubuntu).
 - **Windows:** Install Visual Studio Build Tools (for `cl.exe`) or MinGW/MSYS2 (for `gcc`). Ensure the compiler is on PATH or set **PGSI_CC_PATH**.
+
+- **Cython requires Python development headers.** On **Linux**, if you see errors such as *Python.h: No such file or directory* or *fatal error: Python.h*, install the development package for your Python version, e.g.:
+
+  ```bash
+  # Debian/Ubuntu
+  sudo apt install python3-dev
+  ```
+
+  (Use `python3.12-dev` or the matching version if you use a specific minor version.) On macOS and Windows, the standard Python installer usually includes headers; if not, reinstall Python with the “development headers” or “SDK” option.
 
 ### 1.6 Optional: Hardware energy measurement (Linux x86_64 only)
 

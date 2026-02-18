@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Solve the Towers of Hanoi problem.")
     parser.add_argument(
         "-n", "--num_disks", type=int, default=__default__["hanoi"]["n"], 
-        help=f"Number of disks (default: {__default__["hanoi"]["n"]})"
+        help=f"Number of disks (default: {__default__['hanoi']['n']})"
     )
     args = parser.parse_args()
 

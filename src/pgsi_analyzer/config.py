@@ -47,7 +47,7 @@ class ToolPaths:
 # Benchmark scripts use DEFAULT_PARAMS[algorithm] for test_n and other algorithm-specific params.
 DEFAULT_PARAMS: dict = {
     "binary-trees": {"test_n": 50, "depth": 10},
-    "fannkuch_redux": {"test_n": 50},
+    "fannkuch_redux": {"test_n": 50, "n": 7},
     "fasta": {"test_n": 50, "k": 3, "query_sequence": "", "target_sequence": ""},
     "hanoi": {"test_n": 50, "n": 15},
     "K_Nucleotide": {"test_n": 50, "k": 2, "nucleotide_sequence_file": ""},

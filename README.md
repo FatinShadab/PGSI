@@ -95,11 +95,14 @@ This automatically installs Python dependencies including:
   - **Linux/macOS**: `gcc` or `clang` (install via package manager)
   - **Windows**: `cl.exe` (Visual Studio Build Tools) or `gcc` (MinGW/MSYS2)
 
+- **Python development headers** (for **Cython** on Linux): If Cython build fails with *Python.h: No such file or directory*, install e.g. `python3-dev` (Debian/Ubuntu: `sudo apt install python3-dev`). See **audit/usage_guide.md** §1.5 for details.
+
 **Optional but Recommended:**
 
 - **PyPy** on system PATH (for `pypy` method):
   - Install from [PyPy website](https://www.pypy.org/download.html)
   - Ensure `pypy` or `pypy3` is accessible in your PATH
+  - Install PyPy’s dependencies for benchmarks: `pypy3 -m pip install pandas psutil numpy` (see **audit/usage_guide.md** §1.4).
 
 **Platform Limitations:**
 

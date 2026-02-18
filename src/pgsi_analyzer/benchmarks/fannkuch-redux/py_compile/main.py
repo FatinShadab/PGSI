@@ -52,7 +52,7 @@ def fannkuch_redux(n: int) -> Tuple[int, int]:
     Solves the Fannkuch Redux problem for a given n.
     Generates all permutations of [1..n], counts flips, and tracks max.
     """
-    perm = __default__["fannkuch_redux"]["perm"].copy() # 1-indexed permutation
+    perm = list(range(1, n + 1))  # 1-indexed initial permutation
     max_flips = 0
     count_max_flips = 0
 
@@ -91,6 +91,6 @@ def run_time_benchmark(n: int) -> None:
 
 
 if __name__ == "__main__":
-    n = __default__["fannkuch_redux"]["n"]
+    n = __default__["fannkuch_redux"].get("n", 7)
     run_energy_benchmark(n)
     run_time_benchmark(n)

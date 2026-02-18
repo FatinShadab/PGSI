@@ -23,6 +23,6 @@ def run_time_benchmark(n: int) -> None:
 
     
 if __name__ == "__main__":
-    n = __default__["fannkuch_redux"]["n"]
+    n = __default__["fannkuch_redux"].get("n", 7)
     run_energy_benchmark(n)
     run_time_benchmark(n)
