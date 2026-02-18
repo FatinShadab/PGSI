@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
@@ -12,8 +13,12 @@ from typing import Dict
 import ctypes
 from ctypes import c_char_p, c_int, POINTER, Structure
 
-# Adjust for your platform
-lib = ctypes.CDLL('./libkmer.so')  # or libkmer.dylib / kmer.dll
+# Load shared library (name matches builder: lib{first_c_stem}.so)
+_bench_dir = Path(__file__).resolve().parent
+_c_files = sorted(_bench_dir.glob("*.c"))
+_stem = _c_files[0].stem if _c_files else "kmer_counter"
+_lib_path = _bench_dir / (f"{_stem}.dll" if os.name == "nt" else f"lib{_stem}.so")
+lib = ctypes.CDLL(str(_lib_path))
 
 class KmerCount(Structure):
     _fields_ = [("kmer", c_char_p), ("count", c_int)]

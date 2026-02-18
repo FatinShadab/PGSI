@@ -117,8 +117,8 @@ def build_ctypes(
     if build_dir is None:
         build_dir = benchmark_path
     
-    # Find .c files
-    c_files = list(benchmark_path.glob("*.c"))
+    # Find .c files (sorted for deterministic library name)
+    c_files = sorted(benchmark_path.glob("*.c"))
     if not c_files:
         raise ConfigurationError(f"No .c files found in {benchmark_path}")
     
