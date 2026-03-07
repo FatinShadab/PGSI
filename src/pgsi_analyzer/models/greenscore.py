@@ -116,8 +116,9 @@ def calculate_greenscore(
     time_mean = time_norm.drop(columns=['algorithm']).mean()
     carbon_mean = carbon_norm.drop(columns=['algorithm']).mean()
     
-    # Step 3: Extract method names (remove suffixes like '_CO2e_g')
-    method_names = energy_mean.index.str.replace(r'_.*$', '', regex=True)
+    # Step 3: Method names from energy columns (already plain: cpython, py_compile, etc.)
+    # Carbon columns have '_CO2e_g' suffix but we use energy index so names stay correct
+    method_names = energy_mean.index
     
     # Step 4: Combine into a single DataFrame
     mean_df = pd.DataFrame({

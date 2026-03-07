@@ -11,24 +11,33 @@ from typing import Union, List
 from collections import defaultdict
 
 
-def extract_algorithm_name(full_name: str) -> str:
+def extract_algorithm_name(full_name: str, method_name: str = "") -> str:
     """
     Extract algorithm name from full filename.
 
-    Extracts everything before the last underscore, assuming format:
-    'algorithm_method' or 'algorithm_run_method'.
+    When method_name is provided (e.g. from the parent directory), strips
+    '_' + method_name from the end so that e.g. 'nbody_py_compile' with
+    method 'py_compile' yields 'nbody' instead of 'nbody_py'.
 
     Args:
-        full_name: Full filename (e.g., 'bubble_sort_cpython')
+        full_name: Full filename (e.g., 'nbody_py_compile', 'nbody_cpython')
+        method_name: Method name (e.g., 'py_compile', 'cpython'). If provided
+                     and full_name ends with '_' + method_name, that suffix is removed.
 
     Returns:
-        Algorithm name (e.g., 'bubble_sort')
+        Algorithm name (e.g., 'nbody')
 
     Examples:
+        >>> extract_algorithm_name('nbody_py_compile', 'py_compile')
+        'nbody'
+        >>> extract_algorithm_name('nbody_cpython', 'cpython')
+        'nbody'
         >>> extract_algorithm_name('bubble_sort_cpython')
         'bubble_sort'
     """
-    return '_'.join(full_name.split('_')[:-1])
+    if method_name and full_name.endswith("_" + method_name):
+        return full_name[: -len(method_name) - 1].rstrip("_")
+    return "_".join(full_name.split("_")[:-1])
 
 
 def combine_energy_results(
@@ -79,7 +88,7 @@ def combine_energy_results(
         # Process each row
         for _, row in df.iterrows():
             full_filename = row['filename']
-            algorithm = extract_algorithm_name(full_filename)
+            algorithm = extract_algorithm_name(full_filename, method_name)
             
             try:
                 avg_energy = float(row['average_package (uJ)'])
@@ -159,7 +168,7 @@ def combine_time_results(
         # Process each row
         for _, row in df.iterrows():
             full_filename = row['filename']
-            algorithm = extract_algorithm_name(full_filename)
+            algorithm = extract_algorithm_name(full_filename, method_name)
             
             try:
                 exec_time = float(row['execution_time (s)'])
