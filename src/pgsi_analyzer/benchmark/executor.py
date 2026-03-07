@@ -233,13 +233,15 @@ def execute_benchmark(
     
     # Expected CSV filename pattern from benchmarks
     # Many py_compile scripts use "pycompile" (no underscore) in csv_filename
+    # Some benchmarks (e.g. n-body) use algorithm with hyphens removed (nbody not n_body)
     csv_base = f"{algorithm.replace('-', '_')}_{method}"
+    alg_no_hyphen = algorithm.replace("-", "")
     csv_bases_to_try = [csv_base]
+    if "-" in algorithm:
+        csv_bases_to_try.append(f"{alg_no_hyphen}_{method}")
     if method == "py_compile":
         csv_bases_to_try.append(f"{algorithm.replace('-', '_')}_pycompile")
-        # Some benchmarks use algorithm with hyphens removed (e.g. n-body -> nbody)
-        alg_no_hyphen = algorithm.replace("-", "")
-        if alg_no_hyphen != algorithm.replace("-", "_"):
+        if "-" in algorithm:
             csv_bases_to_try.append(f"{alg_no_hyphen}_py_compile")
             csv_bases_to_try.append(f"{alg_no_hyphen}_pycompile")
     
