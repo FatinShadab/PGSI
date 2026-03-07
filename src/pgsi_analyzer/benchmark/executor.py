@@ -190,13 +190,19 @@ def execute_benchmark(
         )
         
         if result.returncode != 0:
-            raise MeasurementError(
+            err_msg = (
                 f"Benchmark execution failed for {algorithm}/{method}:\n"
                 f"Command: {' '.join(exec_args)}\n"
                 f"Return code: {result.returncode}\n"
                 f"stdout: {result.stdout}\n"
                 f"stderr: {result.stderr}"
             )
+            if method == "pypy" and "ModuleNotFoundError" in result.stderr and "psutil" in result.stderr:
+                err_msg += (
+                    "\n\nPyPy is missing project dependencies. Install them with:\n"
+                    "  pypy3 -m pip install -e ."
+                )
+            raise MeasurementError(err_msg)
         
     except subprocess.TimeoutExpired:
         raise MeasurementError(

@@ -102,7 +102,12 @@ This automatically installs Python dependencies including:
 - **PyPy** on system PATH (for `pypy` method):
   - Install from [PyPy website](https://www.pypy.org/download.html)
   - Ensure `pypy` or `pypy3` is accessible in your PATH
-  - Install PyPy’s dependencies for benchmarks: `pypy3 -m pip install pandas psutil numpy` (see **audit/usage_guide.md** §1.4).
+  - **Install the project and its dependencies for PyPy** so benchmark scripts can import `pgsi_analyzer` and `psutil`. If PyPy has no pip yet, bootstrap it first, then install:
+    ```bash
+    pypy3 -m ensurepip
+    pypy3 -m pip install -e .
+    ```
+    (See **audit/usage_guide.md** §1.4 for details.)
 
 **Platform Limitations:**
 
