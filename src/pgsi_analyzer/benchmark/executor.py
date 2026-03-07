@@ -199,8 +199,9 @@ def execute_benchmark(
             )
             if method == "pypy" and "ModuleNotFoundError" in result.stderr and "psutil" in result.stderr:
                 err_msg += (
-                    "\n\nPyPy is missing project dependencies. Install them with:\n"
-                    "  pypy3 -m pip install -e ."
+                    "\n\nPyPy is missing dependencies used by benchmark scripts. Install only what's needed:\n"
+                    "  pypy3 -m ensurepip   # if pip is not installed\n"
+                    "  pypy3 -m pip install psutil python-dotenv"
                 )
             raise MeasurementError(err_msg)
         

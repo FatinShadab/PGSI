@@ -67,6 +67,10 @@ analysis = [
     "scipy>=1.10.0",
     "statsmodels>=0.14.0",
 ]
+# Better CPU info when psutil is unavailable (e.g. PyPy). Works on CPython and PyPy.
+pypy = [
+    "py-cpuinfo>=9.0.0",
+]
 all = [
     "pgsi-analyzer[energy,analysis]",
 ]

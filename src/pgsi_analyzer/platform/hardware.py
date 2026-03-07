@@ -5,18 +5,31 @@ This module provides functions to gather system information and detect
 hardware capabilities, including Intel RAPL support for energy measurement.
 """
 
+import os
 import platform
 import warnings
-import psutil
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+try:
+    import psutil
+except Exception:
+    psutil = None  # Optional: e.g. PyPy may fail to load psutil's C extension
+
+try:
+    from cpuinfo import get_cpu_info as _cpuinfo_get
+except Exception:
+    _cpuinfo_get = None  # Optional: py-cpuinfo works on CPython and PyPy
 
 from .detection import is_linux_intel
 
 
 def get_cpu_info() -> Dict[str, Any]:
     """
-    Get CPU information using psutil and platform modules.
+    Get CPU information using psutil (when available) and platform modules.
+
+    When psutil is not available (e.g. on PyPy), tries py-cpuinfo if installed,
+    then falls back to platform and os.
 
     Returns:
         Dictionary containing CPU information:
@@ -31,16 +44,42 @@ def get_cpu_info() -> Dict[str, Any]:
         >>> info['processor']
         'Intel64 Family 6 Model 142 Stepping 10, GenuineIntel'
     """
-    try:
-        freq = psutil.cpu_freq()
-        freq_current = freq.current if freq else None
-    except Exception:
+    if psutil is not None:
+        try:
+            freq = psutil.cpu_freq()
+            freq_current = freq.current if freq else None
+        except Exception:
+            freq_current = None
+        cores_physical = psutil.cpu_count(logical=False) or 0
+        cores_logical = psutil.cpu_count(logical=True) or 0
+    else:
+        # Fallback: py-cpuinfo (works on CPython and PyPy) or stdlib
+        if _cpuinfo_get is not None:
+            try:
+                info = _cpuinfo_get()
+                processor = (info.get("brand_raw") or platform.processor() or "Unknown").strip()
+                cores_logical = int(info["count"]) if info.get("count") is not None else (os.cpu_count() or 0)
+                cores_physical = 0  # py-cpuinfo does not expose physical vs logical
+                hz_actual = info.get("hz_actual")
+                freq_current = (float(hz_actual[0]) / 1e6) if hz_actual else None
+                architecture = info.get("arch") or platform.machine()
+                return {
+                    "processor": processor,
+                    "cores_physical": cores_physical,
+                    "cores_logical": cores_logical,
+                    "frequency_current": freq_current,
+                    "architecture": architecture,
+                }
+            except Exception:
+                pass
         freq_current = None
+        cores_logical = os.cpu_count() or 0
+        cores_physical = 0
 
     return {
         "processor": platform.processor() or "Unknown",
-        "cores_physical": psutil.cpu_count(logical=False) or 0,
-        "cores_logical": psutil.cpu_count(logical=True) or 0,
+        "cores_physical": cores_physical,
+        "cores_logical": cores_logical,
         "frequency_current": freq_current,
         "architecture": platform.machine(),
     }
@@ -81,10 +120,15 @@ def get_system_info(result_file_path: Optional[Path] = None) -> Dict[str, Any]:
         result_file_str = ""
 
     cpu_info = get_cpu_info()
-    
+    ram_gb = (
+        round(psutil.virtual_memory().total / (1024 ** 3), 2)
+        if psutil is not None
+        else 0.0
+    )
+
     return {
         "CPU": cpu_info["processor"],
-        "RAM_GB": round(psutil.virtual_memory().total / (1024 ** 3), 2),
+        "RAM_GB": ram_gb,
         "OS": f"{platform.system()} {platform.release()}",
         "Architecture": platform.machine(),
         "Test_Result_File": result_file_str,

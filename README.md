@@ -102,10 +102,10 @@ This automatically installs Python dependencies including:
 - **PyPy** on system PATH (for `pypy` method):
   - Install from [PyPy website](https://www.pypy.org/download.html)
   - Ensure `pypy` or `pypy3` is accessible in your PATH
-  - **Install the project and its dependencies for PyPy** so benchmark scripts can import `pgsi_analyzer` and `psutil`. If PyPy has no pip yet, bootstrap it first, then install:
+  - **Install only the dependencies used by benchmark scripts** (the runner sets `PYTHONPATH` so PyPy finds the project; you do not need to build pandas/pillow for PyPy). If PyPy has no pip, bootstrap it first:
     ```bash
     pypy3 -m ensurepip
-    pypy3 -m pip install -e .
+    pypy3 -m pip install psutil python-dotenv
     ```
     (See **audit/usage_guide.md** §1.4 for details.)
 

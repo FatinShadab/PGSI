@@ -2,6 +2,8 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
+from typing import List
+
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
 from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
@@ -31,8 +33,8 @@ def mandelbrot(c: complex, max_iter: int) -> int:
             return i
     return max_iter  # If max_iter is reached, assume it's inside the set
 
-def generate_mandelbrot(width: int, height: int, max_iter: int, 
-                         x_min: float, x_max: float, y_min: float, y_max: float) -> list[list[int]]:
+def generate_mandelbrot(width: int, height: int, max_iter: int,
+                        x_min: float, x_max: float, y_min: float, y_max: float) -> List[List[int]]:
     """
     Generates a Mandelbrot set representation as a 2D list of iteration counts.
     
@@ -49,14 +51,14 @@ def generate_mandelbrot(width: int, height: int, max_iter: int,
         y_max (float): Maximum y-coordinate (imaginary part).
 
     Returns:
-        list[list[int]]: A 2D list containing iteration counts for each point.
+        List[List[int]]: A 2D list containing iteration counts for each point.
     """
     aspect_ratio: float = width / height  # Adjust the Y range for aspect ratio
     y_min, y_max = y_min / aspect_ratio, y_max / aspect_ratio
-    mandelbrot_set: list[list[int]] = []  # 2D list to store iteration counts
+    mandelbrot_set: List[List[int]] = []  # 2D list to store iteration counts
 
     for y in range(height):
-        row: list[int] = []  # Store iteration values for a row
+        row: List[int] = []  # Store iteration values for a row
         for x in range(width):
             real: float = x_min + (x / width) * (x_max - x_min)  # Map pixel x to real part
             imag: float = y_min + (y / height) * (y_max - y_min)  # Map pixel y to imaginary part
@@ -66,7 +68,7 @@ def generate_mandelbrot(width: int, height: int, max_iter: int,
     
     return mandelbrot_set  # Return 2D list of iteration counts
 
-def render_mandelbrot(data: list[list[int]], max_iter: int) -> None:
+def render_mandelbrot(data: List[List[int]], max_iter: int) -> None:
     """
     Renders the Mandelbrot set using ASCII characters.
     
@@ -74,7 +76,7 @@ def render_mandelbrot(data: list[list[int]], max_iter: int) -> None:
     Darker characters represent higher iteration counts (points inside the set).
 
     Args:
-        data (list[list[int]]): The Mandelbrot set iteration values.
+        data (List[List[int]]): The Mandelbrot set iteration values.
         max_iter (int): Maximum iteration count used for normalization.
     
     Returns:

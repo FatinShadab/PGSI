@@ -7,8 +7,12 @@ CPU time, TDP (Thermal Design Power), and utilization models.
 """
 
 import time
-import psutil
 from typing import Dict, Any, Tuple, Optional
+
+try:
+    import psutil
+except Exception:
+    psutil = None  # Optional: e.g. PyPy may fail to load psutil's C extension
 
 from ..platform.hardware import get_cpu_info
 from ..platform.detection import is_windows, is_macos, detect_platform
@@ -153,6 +157,9 @@ def estimate_energy_from_psutil(
     """
     Estimate energy using psutil to monitor CPU utilization.
 
+    When psutil is not available (e.g. on PyPy), falls back to CPU-time-based
+    estimation.
+
     Monitors CPU percent during execution and applies power models
     based on CPU type and actual utilization.
 
@@ -168,6 +175,9 @@ def estimate_energy_from_psutil(
         >>> energy > 0
         True
     """
+    if psutil is None:
+        return estimate_energy_cpu_time(duration_seconds, cpu_info)
+
     if cpu_info is None:
         cpu_info = get_cpu_info()
     
@@ -245,13 +255,13 @@ def estimate_macos(
     processor = cpu_info.get("processor", "Unknown").lower()
     
     # Apple Silicon typically has lower power consumption
-    # Adjust utilization model for Apple Silicon
-    if "apple" in processor or "m1" in processor or "m2" in processor or "m3" in processor:
-        # Use psutil-based estimation for Apple Silicon (better for ARM)
+    # Adjust utilization model for Apple Silicon (when psutil is available)
+    if psutil is not None and (
+        "apple" in processor or "m1" in processor or "m2" in processor or "m3" in processor
+    ):
         return estimate_energy_from_psutil(cpu_time_seconds, cpu_info)
-    else:
-        # Use standard CPU time estimation for Intel Macs
-        return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
+    # Use standard CPU time estimation for Intel Macs or when psutil is unavailable
+    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
 
 
 def estimate_energy(
