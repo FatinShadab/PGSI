@@ -170,21 +170,30 @@ pytest tests/test_benchmark_executor.py::TestExecuteBenchmark::test_execute_benc
 
 ---
 
-## 3. Data Contracts (CSV columns for measurement decorators)
+## 3. Data Contracts (CSV columns and file naming)
 
 If you add or change measurement logic, the pipeline expects the following. See **audit/architecture.md** (Internal Contracts) for full detail.
+
+### 3.0 Allowed file naming (regex, audit)
+
+The **ResultsCollector** and **aggregation** layer accept only files whose basename matches one of these patterns. Any other file (e.g. **invalid_file.txt**, **energy_data.csv.bak**, **file.csv.tmp**) is ignored.
+
+- **Energy CSVs:** **`^energy_.*\.csv$`** — e.g. **energy_hanoi_cpython.csv**, **energy_sort_v2_cpython.csv**.
+- **Time CSVs:** **`^time_.*\.csv$`** — e.g. **time_hanoi_cpython.csv**.
+
+The decorators **measure_energy_to_csv** and **measure_time_to_csv** automatically prefix the given **csv_filename** with **energy_** and **time_** so output files satisfy these patterns. Partial/temp files (**.csv.tmp**, **.csv.bak**) are never accepted by the aggregator.
 
 ### 3.1 Raw energy CSV (from measure_energy_to_csv)
 
 - **Required column:** **`package (uJ)`** (energy in microjoules). Aggregation uses this.
-- Optional but present in current implementation: `timestamp`, `function`, `run`, `dram (uJ)`, `measurement_method`.
-- Written under **energy_benchmark/** in the benchmark’s working directory. Filename should match **\<algorithm\>_\<method\>** (e.g. **my_algo_cpython.csv**).
+- Optional but present: `timestamp`, `function`, `run`, `dram (uJ)`, `measurement_method`, **`methodology`** (audit).
+- Written under **energy_benchmark/** in the benchmark’s working directory. Output filename is **energy_\<csv_filename\>.csv** (e.g. **energy_my_algo_cpython.csv**).
 
 ### 3.2 Raw time CSV (from measure_time_to_csv)
 
 - **Required column:** **`execution_time (s)`** (seconds). Aggregation uses this.
 - Optional: `timestamp`, `function`, `run`.
-- Written under **time_benchmark/**. Same filename convention as energy.
+- Written under **time_benchmark/** as **time_\<csv_filename\>.csv** (e.g. **time_my_algo_cpython.csv**).
 
 ### 3.3 Downstream contracts (for reference)
 

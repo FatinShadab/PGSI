@@ -22,3 +22,7 @@ class PlatformError(PGSIAnalyzerError):
 class ConfigurationError(PGSIAnalyzerError):
     """Raised for configuration or missing resource issues."""
 
+
+class AuditError(PGSIAnalyzerError):
+    """Raised when audit validation fails (e.g. data in unregistered directory/method)."""
+

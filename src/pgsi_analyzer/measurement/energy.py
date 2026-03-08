@@ -77,8 +77,8 @@ def measure_energy_to_csv(
             # Create the directory if it doesn't exist
             folder_path.mkdir(parents=True, exist_ok=True)
 
-            # Create file paths using Path
-            result_file_path = folder_path / f"{csv_filename}.csv"
+            # Create file paths using Path (prefix for audit: only energy_*.csv accepted by collector)
+            result_file_path = folder_path / f"energy_{csv_filename}.csv"
             system_info_path = folder_path / "system_info_pyrapl.json"
 
             # Determine measurement method

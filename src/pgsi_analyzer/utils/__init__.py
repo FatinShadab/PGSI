@@ -18,6 +18,7 @@ from .errors import (
     AnalysisError,
     PlatformError,
     ConfigurationError,
+    AuditError,
 )
 
 __all__ = [
@@ -31,5 +32,6 @@ __all__ = [
     "AnalysisError",
     "PlatformError",
     "ConfigurationError",
+    "AuditError",
 ]
 

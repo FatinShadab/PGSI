@@ -270,7 +270,7 @@ def execute_benchmark(
     # Search in multiple locations
     search_dirs = [search_dir, output_dir, search_dir.parent, Path.cwd()]
     
-    # Expected CSV filename pattern from benchmarks
+    # Expected CSV filename pattern from benchmarks (audit: energy_*.csv and time_*.csv)
     # Many py_compile scripts use "pycompile" (no underscore) in csv_filename
     # Some benchmarks (e.g. n-body) use algorithm with hyphens removed (nbody not n_body)
     csv_base = f"{algorithm.replace('-', '_')}_{method}"
@@ -283,6 +283,9 @@ def execute_benchmark(
         if "-" in algorithm:
             csv_bases_to_try.append(f"{alg_no_hyphen}_py_compile")
             csv_bases_to_try.append(f"{alg_no_hyphen}_pycompile")
+    # Prefer prefixed names (energy_*, time_*) for audit compliance
+    energy_bases = [f"energy_{b}" for b in csv_bases_to_try] + csv_bases_to_try
+    time_bases = [f"time_{b}" for b in csv_bases_to_try] + csv_bases_to_try
     
     # Find CSV files
     energy_csv = None
@@ -299,11 +302,16 @@ def execute_benchmark(
         time_folder = search_base / "time_benchmark"
         
         if energy_folder.exists():
-            for base in csv_bases_to_try:
+            for base in energy_bases:
                 csv_file = energy_folder / f"{base}.csv"
                 if csv_file.exists() and not energy_csv:
                     energy_csv = csv_file
                     break
+            if not energy_csv:
+                for csv_file in energy_folder.glob("energy_*.csv"):
+                    if any(b.lower() in csv_file.stem.lower() for b in csv_bases_to_try) and not energy_csv:
+                        energy_csv = csv_file
+                        break
             if not energy_csv:
                 for csv_file in energy_folder.glob("*.csv"):
                     if any(base.lower() in csv_file.name.lower() for base in csv_bases_to_try) and not energy_csv:
@@ -311,11 +319,16 @@ def execute_benchmark(
                         break
         
         if time_folder.exists():
-            for base in csv_bases_to_try:
+            for base in time_bases:
                 csv_file = time_folder / f"{base}.csv"
                 if csv_file.exists() and not time_csv:
                     time_csv = csv_file
                     break
+            if not time_csv:
+                for csv_file in time_folder.glob("time_*.csv"):
+                    if any(b.lower() in csv_file.stem.lower() for b in csv_bases_to_try) and not time_csv:
+                        time_csv = csv_file
+                        break
             if not time_csv:
                 for csv_file in time_folder.glob("*.csv"):
                     if any(base.lower() in csv_file.name.lower() for base in csv_bases_to_try) and not time_csv:

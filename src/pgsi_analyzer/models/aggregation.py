@@ -5,9 +5,79 @@ This module provides functions to aggregate energy and time measurements
 from raw CSV logs, computing averages across multiple runs.
 """
 
+import re
 import pandas as pd
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, List
+
+# Allowed filename patterns for audit (strict regex; partial/temp files excluded)
+ALLOWED_ENERGY_CSV_PATTERN = re.compile(r"^energy_.*\.csv$")
+ALLOWED_TIME_CSV_PATTERN = re.compile(r"^time_.*\.csv$")
+# Partial/temp files to ignore (do not match *.csv.tmp, *.csv.bak, etc.)
+PARTIAL_CSV_SUFFIXES = (".csv.tmp", ".csv.bak", ".csv.part", ".csv~")
+
+
+def _is_partial_or_temp(path: Path) -> bool:
+    """True if path looks like a partial/temp file (e.g. file.csv.tmp)."""
+    name = path.name
+    return any(name.endswith(s) for s in PARTIAL_CSV_SUFFIXES)
+
+
+def _allowed_energy_csv_files(folder: Path) -> List[Path]:
+    """Return paths to CSV files that match ^energy_.*\\.csv$ and are not partial/temp."""
+    out = []
+    for p in folder.iterdir():
+        if not p.is_file():
+            continue
+        if _is_partial_or_temp(p):
+            continue
+        if ALLOWED_ENERGY_CSV_PATTERN.match(p.name):
+            out.append(p)
+    return out
+
+
+def _allowed_time_csv_files(folder: Path) -> List[Path]:
+    """Return paths to CSV files that match ^time_.*\\.csv$ and are not partial/temp."""
+    out = []
+    for p in folder.iterdir():
+        if not p.is_file():
+            continue
+        if _is_partial_or_temp(p):
+            continue
+        if ALLOWED_TIME_CSV_PATTERN.match(p.name):
+            out.append(p)
+    return out
+
+
+def stress_test_aggregation_regex(
+    folder_path: Union[str, Path],
+    kind: str = "energy",
+) -> dict:
+    """
+    Regex stress test: attempt to process folder with various filenames.
+    Returns counts of accepted, rejected (wrong pattern), and skipped (partial/temp).
+    """
+    folder = Path(folder_path) if isinstance(folder_path, str) else folder_path
+    if not folder.exists() or not folder.is_dir():
+        return {"accepted": 0, "rejected_pattern": 0, "skipped_partial": 0}
+    accepted, rejected, skipped = 0, 0, 0
+    for p in folder.iterdir():
+        if not p.is_file():
+            continue
+        if _is_partial_or_temp(p):
+            skipped += 1
+            continue
+        if kind == "energy":
+            if ALLOWED_ENERGY_CSV_PATTERN.match(p.name):
+                accepted += 1
+            elif p.suffix == ".csv":
+                rejected += 1
+        else:
+            if ALLOWED_TIME_CSV_PATTERN.match(p.name):
+                accepted += 1
+            elif p.suffix == ".csv":
+                rejected += 1
+    return {"accepted": accepted, "rejected_pattern": rejected, "skipped_partial": skipped}
 
 
 def aggregate_energy(
@@ -43,11 +113,11 @@ def aggregate_energy(
     if not folder.is_dir():
         raise ValueError(f"Path is not a directory: {folder}")
     
-    # Find all CSV files
-    csv_files = list(folder.glob('*.csv'))
+    # Only process files matching ^energy_.*\\.csv$ (exclude partial/temp)
+    csv_files = _allowed_energy_csv_files(folder)
     
     if not csv_files:
-        raise ValueError(f"No CSV files found in folder: {folder}")
+        raise ValueError(f"No valid energy CSV files found in folder: {folder}")
     
     results = []
     
@@ -131,11 +201,11 @@ def aggregate_time(
     if not folder.is_dir():
         raise ValueError(f"Path is not a directory: {folder}")
     
-    # Find all CSV files
-    csv_files = list(folder.glob('*.csv'))
+    # Only process files matching ^time_.*\\.csv$ (exclude partial/temp)
+    csv_files = _allowed_time_csv_files(folder)
     
     if not csv_files:
-        raise ValueError(f"No CSV files found in folder: {folder}")
+        raise ValueError(f"No valid time CSV files found in folder: {folder}")
     
     results = []
     

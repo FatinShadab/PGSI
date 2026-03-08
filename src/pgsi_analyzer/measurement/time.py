@@ -48,8 +48,8 @@ def measure_time_to_csv(
             # Create the directory if it doesn't exist
             folder_path.mkdir(parents=True, exist_ok=True)
 
-            # Create file paths using Path
-            result_file_path = folder_path / f"{csv_filename}.csv"
+            # Create file paths using Path (prefix for audit: only time_*.csv accepted by collector)
+            result_file_path = folder_path / f"time_{csv_filename}.csv"
             system_info_path = folder_path / "system_info.json"
 
             # Write system info to JSON if the file does not exist

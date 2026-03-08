@@ -50,7 +50,7 @@ class TestCrossPlatformEnergy:
             assert result == sum(range(1000))
             
             # Verify CSV was created
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             assert csv_file.exists()
             
             # Verify CSV content
@@ -112,7 +112,7 @@ class TestCrossPlatformEnergy:
                 def sample():
                     return sum(range(100))
                 sample()
-            csv_file = folder_path / "audit_test.csv"
+            csv_file = folder_path / "energy_audit_test.csv"
             assert csv_file.exists()
             with csv_file.open("r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
@@ -151,7 +151,7 @@ class TestCrossPlatformEnergy:
             assert result == 42
             
             # Verify CSV has 'hardware' method
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             with csv_file.open('r', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 rows = list(reader)
@@ -182,7 +182,7 @@ class TestCrossPlatformEnergy:
                 sample_function()
             
             # Verify energy values are reasonable
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             with csv_file.open('r', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 rows = list(reader)
@@ -239,7 +239,7 @@ class TestCrossPlatformEnergy:
                 sample_function()
             
             # Verify CSV format matches expected structure
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             with csv_file.open('r', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 rows = list(reader)
@@ -273,7 +273,7 @@ class TestCrossPlatformEnergy:
                 sample_function()
             
             # Verify DRAM is 0
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             with csv_file.open('r', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 rows = list(reader)

@@ -4,12 +4,23 @@ Results collection and filesystem layout for the benchmark pipeline.
 Delegates file movement and path resolution so the orchestrator can focus on
 pipeline coordination. Ensures the output directory structure matches the
 contract expected by combination models (method name = parent directory of
-aggregated files).
+aggregated files). Uses strict regex for file naming and validates methods
+against the benchmark registry.
 """
 
+import re
 import shutil
 from pathlib import Path
 from typing import Dict, List, Any
+
+from ..utils.errors import AuditError
+from ..benchmarks.registry import VALID_METHODS
+
+# Allowed filename patterns (audit): only these are copied into aggregation workspace
+ENERGY_CSV_PATTERN = re.compile(r"^energy_.*\.csv$")
+TIME_CSV_PATTERN = re.compile(r"^time_.*\.csv$")
+# Ignore directory-level garbage
+GARBAGE_ENTRIES = {".DS_Store", "__pycache__", ".git", ".env"}
 
 
 # File type constants for get_output_path
@@ -43,12 +54,21 @@ class ResultsCollector:
             "energy": { method: [dir, ...] },  # unique dirs containing energy CSVs
             "time": { method: [dir, ...] },
           }
+
+        Raises:
+          AuditError: If a method is not in the registry whitelist (VALID_METHODS).
         """
         energy_by_method: Dict[str, List[Path]] = {}
         time_by_method: Dict[str, List[Path]] = {}
 
         for _algorithm, methods_dict in execution_results.items():
             for method, results in methods_dict.items():
+                # Verification: method must be in registry whitelist
+                if method not in VALID_METHODS:
+                    raise AuditError(
+                        f"Data file found for method '{method}' which is not registered in "
+                        "benchmarks/registry.py (VALID_METHODS). Audit requires all methods to be whitelisted."
+                    )
                 if results.get("energy_csv"):
                     energy_csv = Path(results["energy_csv"])
                     energy_dir = energy_csv.parent
@@ -89,12 +109,18 @@ class ResultsCollector:
         """
         workspace = output_dir / f"temp_{kind}_{method}"
         workspace.mkdir(parents=True, exist_ok=True)
+        pattern = ENERGY_CSV_PATTERN if kind == "energy" else TIME_CSV_PATTERN
         for dir_path in raw_dirs:
             dir_path = Path(dir_path)
             if not dir_path.is_dir():
                 continue
-            for csv_file in dir_path.glob("*.csv"):
-                shutil.copy2(csv_file, workspace / csv_file.name)
+            for entry in dir_path.iterdir():
+                if entry.name in GARBAGE_ENTRIES:
+                    continue
+                if not entry.is_file():
+                    continue
+                if pattern.match(entry.name):
+                    shutil.copy2(entry, workspace / entry.name)
         return workspace
 
     def get_output_path(

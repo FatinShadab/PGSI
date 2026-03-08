@@ -50,7 +50,7 @@ class TestTimeMeasurement:
         """Test that time decorator creates CSV file with correct format."""
         with TemporaryDirectory() as tmpdir:
             folder_path = Path(tmpdir) / "test_time_benchmark"
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "time_test.csv"
             
             @measure_time_to_csv(n=2, csv_filename="test", folder_name=folder_path)
             def sample_function():
@@ -105,7 +105,7 @@ class TestTimeMeasurement:
         """Test that time decorator runs function multiple times."""
         with TemporaryDirectory() as tmpdir:
             folder_path = Path(tmpdir) / "test_time_benchmark"
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "time_test.csv"
             call_count = {'count': 0}
             
             @measure_time_to_csv(n=5, csv_filename="test", folder_name=folder_path)
@@ -135,7 +135,7 @@ class TestTimeMeasurement:
             
             sample_function()
             
-            assert (folder_path / "test.csv").exists()
+            assert (folder_path / "time_test.csv").exists()
 
     def test_measure_time_to_csv_preserves_function_metadata(self):
         """Test that time decorator preserves function metadata."""
@@ -233,7 +233,7 @@ class TestEnergyMeasurement:
         
         with TemporaryDirectory() as tmpdir:
             folder_path = Path(tmpdir) / "test_energy_benchmark"
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             
             @measure_energy_to_csv(n=2, csv_filename="test", folder_name=folder_path)
             def sample_function():
@@ -317,7 +317,7 @@ class TestEnergyMeasurement:
         
         with TemporaryDirectory() as tmpdir:
             folder_path = Path(tmpdir) / "test_energy_benchmark"
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             call_count = {'count': 0}
             
             @measure_energy_to_csv(n=3, csv_filename="test", folder_name=folder_path)
@@ -361,7 +361,7 @@ class TestEnergyMeasurement:
             
             sample_function()
             
-            assert (folder_path / "test.csv").exists()
+            assert (folder_path / "energy_test.csv").exists()
 
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
@@ -378,7 +378,7 @@ class TestEnergyMeasurement:
         
         with TemporaryDirectory() as tmpdir:
             folder_path = Path(tmpdir) / "test_energy_benchmark"
-            csv_file = folder_path / "test.csv"
+            csv_file = folder_path / "energy_test.csv"
             
             @measure_energy_to_csv(n=1, csv_filename="test", folder_name=folder_path)
             def sample_function():
@@ -430,8 +430,8 @@ class TestMeasurementIntegration:
             result = sample_function()
             
             assert result == 42
-            assert (energy_folder / "test.csv").exists()
-            assert (time_folder / "test.csv").exists()
+            assert (energy_folder / "energy_test.csv").exists()
+            assert (time_folder / "time_test.csv").exists()
 
     def test_pathlib_usage_in_time_decorator(self):
         """Test that time decorator uses pathlib.Path exclusively."""
@@ -446,7 +446,7 @@ class TestMeasurementIntegration:
             
             # Verify all paths are Path objects (no os.path usage)
             assert isinstance(folder_path, Path)
-            assert (folder_path / "test.csv").exists()
+            assert (folder_path / "time_test.csv").exists()
 
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
@@ -472,5 +472,5 @@ class TestMeasurementIntegration:
             
             # Verify all paths are Path objects (no os.path usage)
             assert isinstance(folder_path, Path)
-            assert (folder_path / "test.csv").exists()
+            assert (folder_path / "energy_test.csv").exists()
 

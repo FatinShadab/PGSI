@@ -285,12 +285,12 @@ class TestAggregation:
     """Tests for energy and time aggregation."""
 
     def test_aggregate_energy_basic(self):
-        """Test basic energy aggregation."""
+        """Test basic energy aggregation (only energy_*.csv accepted)."""
         with TemporaryDirectory() as tmpdir:
-            # Create test CSV files
-            for i, filename in enumerate(['test1.csv', 'test2.csv']):
+            for i, filename in enumerate(['energy_test1.csv', 'energy_test2.csv']):
                 df = pd.DataFrame({
                     'package (uJ)': [1000000 + i*100000, 2000000 + i*100000],
+                    'methodology': ['hardware_rapl_linux', 'hardware_rapl_linux'],
                 })
                 (Path(tmpdir) / filename).write_text(df.to_csv(index=False))
             
@@ -306,8 +306,9 @@ class TestAggregation:
         with TemporaryDirectory() as tmpdir:
             df = pd.DataFrame({
                 'package (uJ)': [1000000, 2000000, 3000000],
+                'methodology': ['hardware_rapl_linux', 'hardware_rapl_linux', 'hardware_rapl_linux'],
             })
-            (Path(tmpdir) / "test.csv").write_text(df.to_csv(index=False))
+            (Path(tmpdir) / "energy_test.csv").write_text(df.to_csv(index=False))
             
             result = aggregate_energy(tmpdir)
             
@@ -319,8 +320,9 @@ class TestAggregation:
         with TemporaryDirectory() as tmpdir:
             df = pd.DataFrame({
                 'package (uJ)': [1000000],
+                'methodology': ['hardware_rapl_linux'],
             })
-            (Path(tmpdir) / "test.csv").write_text(df.to_csv(index=False))
+            (Path(tmpdir) / "energy_test.csv").write_text(df.to_csv(index=False))
             
             output_path = Path(tmpdir) / "energy_avg.csv"
             result = aggregate_energy(tmpdir, output_path=output_path)
@@ -335,12 +337,12 @@ class TestAggregation:
             aggregate_energy("nonexistent_folder")
 
     def test_aggregate_time_basic(self):
-        """Test basic time aggregation."""
+        """Test basic time aggregation (only time_*.csv accepted)."""
         with TemporaryDirectory() as tmpdir:
             df = pd.DataFrame({
                 'execution_time (s)': [1.0, 2.0, 3.0],
             })
-            (Path(tmpdir) / "test.csv").write_text(df.to_csv(index=False))
+            (Path(tmpdir) / "time_test.csv").write_text(df.to_csv(index=False))
             
             result = aggregate_time(tmpdir)
             
@@ -354,7 +356,7 @@ class TestAggregation:
             df = pd.DataFrame({
                 'execution_time (s)': [1.0, 2.0, 3.0],
             })
-            (Path(tmpdir) / "test.csv").write_text(df.to_csv(index=False))
+            (Path(tmpdir) / "time_test.csv").write_text(df.to_csv(index=False))
             
             result = aggregate_time(tmpdir)
             
@@ -487,13 +489,14 @@ class TestModelsIntegration:
     def test_full_pipeline(self):
         """Test full pipeline: aggregate -> combine -> carbon -> greenscore."""
         with TemporaryDirectory() as tmpdir:
-            # Step 1: Create raw energy data
+            # Step 1: Create raw energy data (must match energy_*.csv for aggregation)
             energy_folder = Path(tmpdir) / "energy"
             energy_folder.mkdir()
             df = pd.DataFrame({
                 'package (uJ)': [1000000, 2000000],
+                'methodology': ['hardware_rapl_linux', 'hardware_rapl_linux'],
             })
-            (energy_folder / "algo1_cpython.csv").write_text(df.to_csv(index=False))
+            (energy_folder / "energy_algo1_cpython.csv").write_text(df.to_csv(index=False))
             
             # Step 2: Aggregate energy
             energy_avg_path = Path(tmpdir) / "energy_avg.csv"
