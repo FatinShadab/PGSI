@@ -241,9 +241,47 @@ def load_tool_paths(
         # Default: try to find on PATH
         cc_path = _find_c_compiler_default()
     
-    return ToolPaths(
+    tool_paths = ToolPaths(
         python=python_path,
         pypy=pypy_path,
         c_compiler=cc_path,
     )
+    verify_tool_paths_against_env(tool_paths)
+    return tool_paths
+
+
+def verify_tool_paths_against_env(tool_paths: ToolPaths) -> list:
+    """
+    Compare ToolPaths with os.environ after dotenv load.
+    Returns a list of verification messages (match/mismatch) for testing and diagnostics.
+    """
+    results = []
+    env_python = os.environ.get("PGSI_PYTHON_PATH")
+    env_pypy = os.environ.get("PGSI_PYPY_PATH")
+    env_cc = os.environ.get("PGSI_CC_PATH")
+    if env_python is not None:
+        resolved_env = _resolve_path(env_python)
+        expected = str(tool_paths.python.resolve()) if tool_paths.python else None
+        actual = str(resolved_env.resolve()) if resolved_env else env_python
+        if expected == actual:
+            results.append("PGSI_PYTHON_PATH matches tool_paths.python")
+        else:
+            results.append(f"PGSI_PYTHON_PATH mismatch: env->{actual}, tool_paths.python->{expected}")
+    if env_pypy is not None:
+        resolved_env = _resolve_path(env_pypy)
+        expected = str(tool_paths.pypy.resolve()) if tool_paths.pypy else None
+        actual = str(resolved_env.resolve()) if resolved_env else env_pypy
+        if expected == actual:
+            results.append("PGSI_PYPY_PATH matches tool_paths.pypy")
+        else:
+            results.append(f"PGSI_PYPY_PATH mismatch: env->{actual}, tool_paths.pypy->{expected}")
+    if env_cc is not None:
+        resolved_env = _resolve_path(env_cc)
+        expected = str(tool_paths.c_compiler.resolve()) if tool_paths.c_compiler else None
+        actual = str(resolved_env.resolve()) if resolved_env else env_cc
+        if expected == actual:
+            results.append("PGSI_CC_PATH matches tool_paths.c_compiler")
+        else:
+            results.append(f"PGSI_CC_PATH mismatch: env->{actual}, tool_paths.c_compiler->{expected}")
+    return results
 

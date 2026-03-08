@@ -8,7 +8,10 @@ configurable weights.
 
 import pandas as pd
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Dict
+
+# Methodology tag for "measured" (hardware); all others count as "estimated"
+METHODOLOGY_MEASURED = "hardware_rapl_linux"
 
 
 def normalize_metrics(df: pd.DataFrame, output_path: Optional[Union[str, Path]] = None) -> pd.DataFrame:
@@ -62,6 +65,23 @@ def normalize_metrics(df: pd.DataFrame, output_path: Optional[Union[str, Path]] 
     return normalized_df
 
 
+def _methodology_counts_from_aggregated(aggregated_energy_paths: Dict[str, Path]) -> Dict[str, Dict[str, int]]:
+    """For each method, count points_measured (hardware_rapl_linux) and points_estimated (else)."""
+    out = {}
+    for method, path in aggregated_energy_paths.items():
+        path = Path(path)
+        if not path.exists():
+            out[method] = {"points_measured": 0, "points_estimated": 0}
+            continue
+        df = pd.read_csv(path)
+        if "methodology" not in df.columns:
+            out[method] = {"points_measured": 0, "points_estimated": len(df)}
+            continue
+        measured = (df["methodology"] == METHODOLOGY_MEASURED).sum()
+        out[method] = {"points_measured": int(measured), "points_estimated": int(len(df) - measured)}
+    return out
+
+
 def calculate_greenscore(
     energy_df: pd.DataFrame,
     time_df: pd.DataFrame,
@@ -69,7 +89,8 @@ def calculate_greenscore(
     alpha: float = 0.4,
     beta: float = 0.4,
     gamma: float = 0.2,
-    output_path: Optional[Union[str, Path]] = None
+    output_path: Optional[Union[str, Path]] = None,
+    aggregated_energy_paths: Optional[Dict[str, Union[str, Path]]] = None,
 ) -> pd.DataFrame:
     """
     Compute the GreenScore for each method by combining normalized
@@ -87,6 +108,8 @@ def calculate_greenscore(
         beta: Weight for carbon component (default: 0.4).
         gamma: Weight for time component (default: 0.2).
         output_path: Optional path to save the final ranking CSV.
+        aggregated_energy_paths: Optional dict method -> path to method's energy_aggregated.csv
+                                used to add points_measured / points_estimated to the output.
 
     Returns:
         DataFrame sorted by green score (ascending, lower is better):
@@ -95,6 +118,8 @@ def calculate_greenscore(
         - 'time_mean': Mean normalized time
         - 'carbon_mean': Mean normalized carbon
         - 'green_score': Composite GreenScore
+        - 'points_measured': (if aggregated_energy_paths given) Count of hardware-measured points
+        - 'points_estimated': (if aggregated_energy_paths given) Count of estimated points
 
     Examples:
         >>> energy_df = pd.read_csv('energy.csv')
@@ -127,6 +152,16 @@ def calculate_greenscore(
         'time_mean': time_mean.values,
         'carbon_mean': carbon_mean.values
     })
+
+    # Step 4b: Add methodology summary (points_measured vs points_estimated)
+    if aggregated_energy_paths:
+        paths_as_path = {k: Path(v) for k, v in aggregated_energy_paths.items()}
+        counts = _methodology_counts_from_aggregated(paths_as_path)
+        mean_df["points_measured"] = mean_df["method"].map(lambda m: counts.get(m, {}).get("points_measured", 0))
+        mean_df["points_estimated"] = mean_df["method"].map(lambda m: counts.get(m, {}).get("points_estimated", 0))
+    else:
+        mean_df["points_measured"] = 0
+        mean_df["points_estimated"] = 0
     
     # Step 5: Compute GreenScore = α·energy + β·carbon + γ·time
     mean_df['green_score'] = (

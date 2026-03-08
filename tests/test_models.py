@@ -298,6 +298,7 @@ class TestAggregation:
             
             assert 'filename' in result.columns
             assert 'average_package (uJ)' in result.columns
+            assert 'methodology' in result.columns
             assert len(result) == 2
 
     def test_aggregate_energy_values(self):

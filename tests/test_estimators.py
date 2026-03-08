@@ -58,20 +58,20 @@ class TestEnergyEstimation:
     """Tests for energy estimation functions."""
 
     def test_estimate_energy_cpu_time_returns_tuple(self):
-        """Test that estimate_energy_cpu_time returns a tuple."""
+        """Test that estimate_energy_cpu_time returns a tuple (energy, model, methodology)."""
         result = estimate_energy_cpu_time(1.0)
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert len(result) == 3
 
     def test_estimate_energy_cpu_time_returns_positive_energy(self):
         """Test that estimated energy is positive."""
-        energy, model = estimate_energy_cpu_time(1.0)
+        energy, model, methodology = estimate_energy_cpu_time(1.0)
         assert energy > 0
         assert isinstance(energy, float)
 
     def test_estimate_energy_cpu_time_returns_model_name(self):
         """Test that estimation model name is returned."""
-        energy, model = estimate_energy_cpu_time(1.0)
+        energy, model, methodology = estimate_energy_cpu_time(1.0)
         assert isinstance(model, str)
         assert len(model) > 0
         assert "TDP" in model or "tdp" in model.lower()
@@ -83,25 +83,25 @@ class TestEnergyEstimation:
             "cores_physical": 4,
             "cores_logical": 8,
         }
-        energy, model = estimate_energy_cpu_time(1.0, cpu_info)
+        energy, model, methodology = estimate_energy_cpu_time(1.0, cpu_info)
         assert energy > 0
 
     def test_estimate_energy_cpu_time_scales_with_time(self):
         """Test that energy scales with CPU time."""
-        energy1, _ = estimate_energy_cpu_time(1.0)
-        energy2, _ = estimate_energy_cpu_time(2.0)
+        energy1, _, _ = estimate_energy_cpu_time(1.0)
+        energy2, _, _ = estimate_energy_cpu_time(2.0)
         # Energy should roughly double (within 10% tolerance for rounding)
         assert abs(energy2 - 2 * energy1) < energy1 * 0.1
 
     def test_estimate_energy_from_psutil_returns_tuple(self):
-        """Test that estimate_energy_from_psutil returns a tuple."""
+        """Test that estimate_energy_from_psutil returns a tuple (energy, model, methodology)."""
         result = estimate_energy_from_psutil(1.0)
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert len(result) == 3
 
     def test_estimate_energy_from_psutil_returns_positive_energy(self):
         """Test that estimated energy is positive."""
-        energy, model = estimate_energy_from_psutil(1.0)
+        energy, model, methodology = estimate_energy_from_psutil(1.0)
         assert energy > 0
         assert isinstance(energy, float)
 
@@ -109,7 +109,7 @@ class TestEnergyEstimation:
     def test_estimate_energy_from_psutil_uses_cpu_percent(self, mock_cpu_percent):
         """Test that estimation uses CPU percent from psutil."""
         mock_cpu_percent.return_value = 80.0
-        energy, model = estimate_energy_from_psutil(1.0)
+        energy, model, methodology = estimate_energy_from_psutil(1.0)
         assert energy > 0
         mock_cpu_percent.assert_called_once()
 
@@ -117,22 +117,22 @@ class TestEnergyEstimation:
         """Test that estimate_windows returns a tuple."""
         result = estimate_windows(1.0)
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert len(result) == 3
 
     def test_estimate_windows_returns_positive_energy(self):
         """Test that Windows estimation returns positive energy."""
-        energy, model = estimate_windows(1.0)
+        energy, model, methodology = estimate_windows(1.0)
         assert energy > 0
 
     def test_estimate_macos_returns_tuple(self):
         """Test that estimate_macos returns a tuple."""
         result = estimate_macos(1.0)
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert len(result) == 3
 
     def test_estimate_macos_returns_positive_energy(self):
         """Test that macOS estimation returns positive energy."""
-        energy, model = estimate_macos(1.0)
+        energy, model, methodology = estimate_macos(1.0)
         assert energy > 0
 
     @patch('pgsi_analyzer.measurement.estimators.get_cpu_info')
@@ -143,23 +143,24 @@ class TestEnergyEstimation:
             "cores_physical": 8,
             "cores_logical": 8,
         }
-        energy, model = estimate_macos(1.0)
+        energy, model, methodology = estimate_macos(1.0)
         assert energy > 0
 
     def test_estimate_energy_platform_agnostic(self):
         """Test that estimate_energy works on any platform."""
         result = estimate_energy(1.0)
         assert isinstance(result, tuple)
-        assert len(result) == 2
-        energy, model = result
+        assert len(result) == 3
+        energy, model, methodology = result
         assert energy > 0
+        assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
 
     def test_estimate_energy_reasonable_values(self):
         """Test that estimated energy values are reasonable."""
         # For 1 second of CPU time, energy should be in a reasonable range
         # Typical CPU at 65W TDP, 80% utilization = ~52W average
         # Energy = 52W * 1s = 52J = 52,000,000 μJ
-        energy, _ = estimate_energy_cpu_time(1.0)
+        energy, _, _ = estimate_energy_cpu_time(1.0)
         
         # Should be between 1 million and 1 billion microjoules for 1 second
         # (1W to 1000W range)
@@ -174,9 +175,10 @@ class TestEnergyEstimation:
         ]
         
         for cpu_info in cpu_models:
-            energy, model = estimate_energy_cpu_time(1.0, cpu_info)
+            energy, model, methodology = estimate_energy_cpu_time(1.0, cpu_info)
             assert energy > 0
             assert isinstance(model, str)
+            assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
 
 
 class TestEstimationIntegration:
@@ -197,16 +199,17 @@ class TestEstimationIntegration:
 
     def test_estimation_consistency(self):
         """Test that estimation is consistent across calls."""
-        energy1, model1 = estimate_energy_cpu_time(1.0)
-        energy2, model2 = estimate_energy_cpu_time(1.0)
+        energy1, model1, meth1 = estimate_energy_cpu_time(1.0)
+        energy2, model2, meth2 = estimate_energy_cpu_time(1.0)
         
         # Should be very close (within 1% for same inputs)
         assert abs(energy1 - energy2) < energy1 * 0.01
         assert model1 == model2
+        assert meth1 == meth2
 
     def test_estimation_units(self):
         """Test that estimation returns energy in microjoules."""
-        energy, _ = estimate_energy_cpu_time(1.0)
+        energy, _, _ = estimate_energy_cpu_time(1.0)
         
         # Convert to Joules
         energy_joules = energy / 1e6

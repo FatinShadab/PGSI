@@ -3,7 +3,7 @@ Benchmark execution module.
 
 Handles subprocess execution of benchmarks with proper isolation
 and environment setup. Ensures compilation time is excluded from
-measurements.
+measurements. Writes audit log (.audit.log) in output_dir for each run.
 """
 
 import subprocess
@@ -12,10 +12,45 @@ import os
 import shutil
 from pathlib import Path
 from typing import Optional, Dict, List
+from datetime import datetime
 
 from ..utils import MeasurementError, PlatformError
 from ..platform.detection import detect_platform
 from ..config import ToolPaths
+
+AUDIT_LOG_FILENAME = ".audit.log"
+
+
+def _append_audit_log(
+    output_dir: Optional[Path],
+    algorithm: str,
+    method: str,
+    exec_args: List[str],
+    exec_env: Dict[str, str],
+    interpreter_absolute: str,
+) -> None:
+    """
+    Append one audit record to output_dir/.audit.log.
+    Logs exec_args, interpreter path (for cpython/pypy), and selected env vars.
+    """
+    if output_dir is None:
+        return
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    log_path = output_dir / AUDIT_LOG_FILENAME
+    path_str = str(Path(exec_args[0]).resolve()) if exec_args else ""
+    env_slice = {
+        "PATH": exec_env.get("PATH", "")[:500] + ("..." if len(exec_env.get("PATH", "")) > 500 else ""),
+        "PYTHONPATH": exec_env.get("PYTHONPATH", ""),
+        "PGSI_RUNS": exec_env.get("PGSI_RUNS", ""),
+    }
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(f"\n--- {datetime.now().isoformat()} | {algorithm} | {method} ---\n")
+        f.write(f"interpreter_absolute: {interpreter_absolute or path_str}\n")
+        f.write(f"exec_args: {exec_args}\n")
+        f.write(f"env PATH: {env_slice['PATH']}\n")
+        f.write(f"env PYTHONPATH: {env_slice['PYTHONPATH']}\n")
+        f.write(f"env PGSI_RUNS: {env_slice['PGSI_RUNS']}\n")
 
 
 def find_python_executable(method: str, tool_paths: Optional[ToolPaths] = None) -> str:
@@ -176,6 +211,10 @@ def execute_benchmark(
         exec_env["PYTHONPATH"] = f"{package_root}:{pythonpath}"
     else:
         exec_env["PYTHONPATH"] = str(package_root)
+
+    # Audit log: record exec_args and env for this run (interpreter absolute path for cpython/pypy)
+    interpreter_absolute = str(Path(exec_args[0]).resolve()) if exec_args else ""
+    _append_audit_log(output_dir, algorithm, method, exec_args, exec_env, interpreter_absolute)
     
     # Execute benchmark
     # The benchmark script will use decorators to write CSVs

@@ -63,10 +63,21 @@ def aggregate_energy(
             # Compute average
             avg_energy = df['package (uJ)'].mean()
             
-            # Store result with filename (without extension)
+            # Preserve methodology: use mode (most common) per file
+            methodology = "unknown"
+            if "methodology" in df.columns:
+                mode_vals = df["methodology"].dropna().mode()
+                methodology = mode_vals.iloc[0] if len(mode_vals) > 0 else (
+                    df["methodology"].iloc[0] if len(df) > 0 else "unknown"
+                )
+                if pd.isna(methodology):
+                    methodology = "unknown"
+            
+            # Store result with filename (without extension) and methodology
             results.append({
                 'filename': csv_file.stem,
-                'average_package (uJ)': avg_energy
+                'average_package (uJ)': avg_energy,
+                'methodology': methodology,
             })
         except Exception as e:
             # Skip files that can't be read

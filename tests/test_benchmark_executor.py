@@ -7,10 +7,12 @@ import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
+from pgsi_analyzer.config import ToolPaths
 from pgsi_analyzer.benchmark.executor import (
     find_python_executable,
     prepare_py_compile,
     execute_benchmark,
+    AUDIT_LOG_FILENAME,
 )
 from pgsi_analyzer.utils import MeasurementError, PlatformError
 
@@ -25,8 +27,6 @@ class TestFindPythonExecutable:
 
     def test_find_pypy_success(self):
         """Test finding PyPy executable when available."""
-        from pgsi_analyzer.config import ToolPaths
-        
         pypy_path = Path("/usr/bin/pypy3")
         tool_paths = ToolPaths(
             python=Path(sys.executable),
@@ -251,4 +251,116 @@ class TestExecuteBenchmark:
                 benchmark_path=benchmark_path,
                 runs=5,
             )
+
+    @patch('pgsi_analyzer.benchmark.executor.find_python_executable')
+    @patch('subprocess.run')
+    @patch('pathlib.Path.exists')
+    @patch('pathlib.Path.is_file')
+    @patch('pathlib.Path.is_dir')
+    @patch('pathlib.Path.iterdir')
+    @patch('pathlib.Path.glob')
+    def test_execute_benchmark_uses_tool_paths_in_subprocess(
+        self, mock_glob, mock_iterdir, mock_isdir, mock_isfile,
+        mock_exists, mock_run, mock_find_exe, tmp_path
+    ):
+        """Executor must use interpreter from tool_paths (e.g. from .env) in subprocess.run."""
+        fake_python = "/opt/fake/env/bin/python3"
+        tool_paths = ToolPaths(python=Path(fake_python), pypy=None, c_compiler=None)
+        mock_find_exe.return_value = fake_python
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        mock_isfile.return_value = True
+        mock_isdir.return_value = False
+        mock_exists.return_value = True
+        mock_iterdir.return_value = [
+            MagicMock(name="energy_benchmark", is_dir=lambda: True),
+            MagicMock(name="time_benchmark", is_dir=lambda: True),
+        ]
+
+        def mock_glob_side_effect(pattern):
+            if "energy_benchmark" in str(pattern):
+                return [tmp_path / "energy_benchmark/hanoi_cpython.csv"]
+            if "time_benchmark" in str(pattern):
+                return [tmp_path / "time_benchmark/hanoi_cpython.csv"]
+            return []
+
+        mock_glob.side_effect = mock_glob_side_effect
+
+        with patch('pandas.read_csv') as mock_read_csv:
+            mock_read_csv.return_value = MagicMock(columns=['package (uJ)'])
+
+            benchmark_path = tmp_path / "benchmark" / "main.py"
+            benchmark_path.parent.mkdir(parents=True)
+            benchmark_path.touch()
+            output_dir = tmp_path / "results"
+            execute_benchmark(
+                algorithm="hanoi",
+                method="cpython",
+                benchmark_path=benchmark_path,
+                runs=3,
+                output_dir=output_dir,
+                tool_paths=tool_paths,
+            )
+
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0] == fake_python, "subprocess.run must be invoked with interpreter from tool_paths (e.g. from .env)"
+
+    @patch('pgsi_analyzer.benchmark.executor.find_python_executable')
+    @patch('subprocess.run')
+    @patch('pathlib.Path.exists')
+    @patch('pathlib.Path.is_file')
+    @patch('pathlib.Path.is_dir')
+    @patch('pathlib.Path.iterdir')
+    @patch('pathlib.Path.glob')
+    def test_execute_benchmark_writes_audit_log_with_interpreter_path(
+        self, mock_glob, mock_iterdir, mock_isdir, mock_isfile,
+        mock_exists, mock_run, mock_find_exe, tmp_path
+    ):
+        """After every run a .audit.log exists and shows the absolute path of the Python interpreter (cpython/pypy)."""
+        fake_python = "/usr/bin/pypy3"
+        mock_find_exe.return_value = fake_python
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        mock_isfile.return_value = True
+        mock_isdir.return_value = False
+        mock_exists.return_value = True
+        mock_iterdir.return_value = [
+            MagicMock(name="energy_benchmark", is_dir=lambda: True),
+            MagicMock(name="time_benchmark", is_dir=lambda: True),
+        ]
+
+        def mock_glob_side_effect(pattern):
+            if "energy_benchmark" in str(pattern):
+                return [tmp_path / "energy_benchmark/hanoi_pypy.csv"]
+            if "time_benchmark" in str(pattern):
+                return [tmp_path / "time_benchmark/hanoi_pypy.csv"]
+            return []
+
+        mock_glob.side_effect = mock_glob_side_effect
+        (tmp_path / "energy_benchmark").mkdir()
+        (tmp_path / "time_benchmark").mkdir()
+        (tmp_path / "energy_benchmark/hanoi_pypy.csv").touch()
+        (tmp_path / "time_benchmark/hanoi_pypy.csv").touch()
+
+        with patch('pandas.read_csv') as mock_read_csv:
+            mock_read_csv.return_value = MagicMock(columns=['package (uJ)'])
+
+            benchmark_path = tmp_path / "benchmark" / "main.py"
+            benchmark_path.parent.mkdir(parents=True)
+            benchmark_path.touch()
+            output_dir = tmp_path / "results"
+            execute_benchmark(
+                algorithm="hanoi",
+                method="pypy",
+                benchmark_path=benchmark_path,
+                runs=2,
+                output_dir=output_dir,
+            )
+
+        audit_log = output_dir / AUDIT_LOG_FILENAME
+        assert audit_log.exists(), ".audit.log must exist after a run"
+        content = audit_log.read_text()
+        assert "interpreter_absolute:" in content
+        assert fake_python in content or "pypy" in content
+        assert "exec_args:" in content
+        assert "PGSI_RUNS" in content
 

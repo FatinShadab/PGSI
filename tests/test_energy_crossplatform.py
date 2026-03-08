@@ -58,13 +58,17 @@ class TestCrossPlatformEnergy:
                 reader = csv.reader(f)
                 rows = list(reader)
                 
-                # Check header
+                # Check header has measurement_method and methodology
                 assert 'measurement_method' in rows[0]
+                assert 'methodology' in rows[0]
+                methodology_col = rows[0].index('methodology')
                 
-                # Check data rows have 'estimation' method
+                # Check data rows have 'estimation' method and estimated methodology tag
                 assert len(rows) >= 3  # Header + 2 data rows
                 assert rows[1][5] == 'estimation'  # measurement_method column
                 assert rows[2][5] == 'estimation'
+                assert rows[1][methodology_col] in ('estimated_cpu_tdp', 'estimated_fallback_generic')
+                assert rows[2][methodology_col] in ('estimated_cpu_tdp', 'estimated_fallback_generic')
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
@@ -94,6 +98,30 @@ class TestCrossPlatformEnergy:
                 assert 'platform' in system_info
                 assert 'estimation_model' in system_info
                 assert system_info['estimation_model'] != 'TBD'  # Should be set after first run
+
+    @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
+    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
+    def test_energy_csv_labeled_estimated_when_rapl_unavailable(self, mock_is_linux_intel):
+        """When RAPL is unavailable (failed import or non-Linux), output CSV must be labeled as estimated."""
+        mock_is_linux_intel.return_value = False  # Simulate RAPL not used (e.g. failed import)
+        with TemporaryDirectory() as tmpdir:
+            folder_path = Path(tmpdir) / "energy_audit"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                @measure_energy_to_csv(n=2, csv_filename="audit_test", folder_name=folder_path)
+                def sample():
+                    return sum(range(100))
+                sample()
+            csv_file = folder_path / "audit_test.csv"
+            assert csv_file.exists()
+            with csv_file.open("r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+            assert len(rows) == 2
+            assert "methodology" in rows[0]
+            for row in rows:
+                assert row["methodology"] in ("estimated_cpu_tdp", "estimated_fallback_generic")
+                assert row["measurement_method"] == "estimation"
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
@@ -216,16 +244,16 @@ class TestCrossPlatformEnergy:
                 reader = csv.reader(f)
                 rows = list(reader)
                 
-                # Check header format
+                # Check header format (includes methodology for audit)
                 expected_columns = [
                     'timestamp', 'function', 'run',
-                    'package (uJ)', 'dram (uJ)', 'measurement_method'
+                    'package (uJ)', 'dram (uJ)', 'measurement_method', 'methodology'
                 ]
                 assert rows[0] == expected_columns
                 
                 # Check data rows have correct number of columns
                 for row in rows[1:]:
-                    assert len(row) == 6
+                    assert len(row) == 7
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)

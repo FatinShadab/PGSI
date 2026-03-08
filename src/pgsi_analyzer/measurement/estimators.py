@@ -9,6 +9,10 @@ CPU time, TDP (Thermal Design Power), and utilization models.
 import time
 from typing import Dict, Any, Tuple, Optional
 
+# Methodology tags for data source labeling (audit)
+METHODOLOGY_ESTIMATED_CPU_TDP = "estimated_cpu_tdp"
+METHODOLOGY_ESTIMATED_FALLBACK_GENERIC = "estimated_fallback_generic"
+
 try:
     import psutil
 except Exception:
@@ -98,7 +102,7 @@ def get_cpu_tdp(cpu_model: str) -> float:
 def estimate_energy_cpu_time(
     cpu_time_seconds: float,
     cpu_info: Optional[Dict[str, Any]] = None
-) -> Tuple[float, str]:
+) -> Tuple[float, str, str]:
     """
     Estimate energy consumption based on CPU time and CPU model.
 
@@ -113,7 +117,7 @@ def estimate_energy_cpu_time(
         cpu_info: Optional CPU info dictionary. If None, will fetch automatically.
 
     Returns:
-        Tuple of (energy in microjoules, estimation model name)
+        Tuple of (energy in microjoules, estimation model name, methodology tag)
 
     Examples:
         >>> energy, model = estimate_energy_cpu_time(1.0)
@@ -146,14 +150,19 @@ def estimate_energy_cpu_time(
     energy_microjoules = energy_joules * 1e6
     
     model_name = f"TDP-based (TDP={tdp_watts}W, util={utilization:.0%})"
-    
-    return energy_microjoules, model_name
+    # Use fallback tag when we have no real CPU model (Unknown + default TDP)
+    methodology = (
+        METHODOLOGY_ESTIMATED_FALLBACK_GENERIC
+        if (processor == "Unknown" and tdp_watts == CPU_TDP_LOOKUP["default"])
+        else METHODOLOGY_ESTIMATED_CPU_TDP
+    )
+    return energy_microjoules, model_name, methodology
 
 
 def estimate_energy_from_psutil(
     duration_seconds: float,
     cpu_info: Optional[Dict[str, Any]] = None
-) -> Tuple[float, str]:
+) -> Tuple[float, str, str]:
     """
     Estimate energy using psutil to monitor CPU utilization.
 
@@ -168,7 +177,7 @@ def estimate_energy_from_psutil(
         cpu_info: Optional CPU info dictionary. If None, will fetch automatically.
 
     Returns:
-        Tuple of (energy in microjoules, estimation model name)
+        Tuple of (energy in microjoules, estimation model name, methodology tag)
 
     Examples:
         >>> energy, model = estimate_energy_from_psutil(1.0)
@@ -176,7 +185,8 @@ def estimate_energy_from_psutil(
         True
     """
     if psutil is None:
-        return estimate_energy_cpu_time(duration_seconds, cpu_info)
+        e, m, meth = estimate_energy_cpu_time(duration_seconds, cpu_info)
+        return e, m, meth
 
     if cpu_info is None:
         cpu_info = get_cpu_info()
@@ -209,14 +219,13 @@ def estimate_energy_from_psutil(
     energy_microjoules = energy_joules * 1e6
     
     model_name = f"psutil-based (TDP={tdp_watts}W, util={cpu_utilization:.0%})"
-    
-    return energy_microjoules, model_name
+    return energy_microjoules, model_name, METHODOLOGY_ESTIMATED_CPU_TDP
 
 
 def estimate_windows(
     cpu_time_seconds: float,
     cpu_info: Optional[Dict[str, Any]] = None
-) -> Tuple[float, str]:
+) -> Tuple[float, str, str]:
     """
     Windows-specific energy estimation.
 
@@ -227,7 +236,7 @@ def estimate_windows(
         cpu_info: Optional CPU info dictionary
 
     Returns:
-        Tuple of (energy in microjoules, estimation model name)
+        Tuple of (energy in microjoules, estimation model name, methodology tag)
     """
     return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
 
@@ -235,7 +244,7 @@ def estimate_windows(
 def estimate_macos(
     cpu_time_seconds: float,
     cpu_info: Optional[Dict[str, Any]] = None
-) -> Tuple[float, str]:
+) -> Tuple[float, str, str]:
     """
     macOS-specific energy estimation.
 
@@ -247,7 +256,7 @@ def estimate_macos(
         cpu_info: Optional CPU info dictionary
 
     Returns:
-        Tuple of (energy in microjoules, estimation model name)
+        Tuple of (energy in microjoules, estimation model name, methodology tag)
     """
     if cpu_info is None:
         cpu_info = get_cpu_info()
@@ -267,7 +276,7 @@ def estimate_macos(
 def estimate_energy(
     cpu_time_seconds: float,
     cpu_info: Optional[Dict[str, Any]] = None
-) -> Tuple[float, str]:
+) -> Tuple[float, str, str]:
     """
     Platform-agnostic energy estimation function.
 
@@ -278,13 +287,13 @@ def estimate_energy(
         cpu_info: Optional CPU info dictionary
 
     Returns:
-        Tuple of (energy in microjoules, estimation model name)
+        Tuple of (energy in microjoules, estimation model name, methodology tag)
 
     Examples:
-        >>> energy, model = estimate_energy(1.0)
+        >>> energy, model, methodology = estimate_energy(1.0)
         >>> energy > 0
         True
-        >>> "estimation" in model.lower() or "tdp" in model.lower()
+        >>> methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
         True
     """
     platform = detect_platform()

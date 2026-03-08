@@ -20,6 +20,9 @@ from ..platform.hardware import get_system_info, get_cpu_info, warn_if_rapl_unav
 from ..platform.detection import is_linux_intel, detect_platform
 from .estimators import estimate_energy
 
+# Methodology tags for data source labeling (audit)
+METHODOLOGY_HARDWARE_RAPL_LINUX = "hardware_rapl_linux"
+
 
 # Conditional pyRAPL import
 _pyrapl_available = False
@@ -120,7 +123,8 @@ def measure_energy_to_csv(
                     'run',
                     'package (uJ)',
                     'dram (uJ)',
-                    'measurement_method'
+                    'measurement_method',
+                    'methodology',
                 ])
 
                 # Run the function n times and log energy usage
@@ -136,6 +140,7 @@ def measure_energy_to_csv(
                         package_energy = measurement.result.pkg[0]
                         dram_energy = measurement.result.dram[0] if measurement.result.dram else 0
                         method = 'hardware'
+                        methodology = METHODOLOGY_HARDWARE_RAPL_LINUX
                     else:
                         # Use estimation for non-Linux platforms
                         # Measure CPU time
@@ -149,7 +154,7 @@ def measure_energy_to_csv(
                         wall_time = end_wall_time - start_wall_time
                         
                         # Use CPU time for estimation (more accurate for CPU-bound tasks)
-                        estimated_energy, estimation_model = estimate_energy(
+                        estimated_energy, estimation_model, methodology = estimate_energy(
                             cpu_time,
                             cpu_info
                         )
@@ -175,7 +180,8 @@ def measure_energy_to_csv(
                         i,
                         package_energy,
                         dram_energy,
-                        method
+                        method,
+                        methodology,
                     ])
             
             return result

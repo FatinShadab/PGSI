@@ -315,6 +315,7 @@ def run_benchmark_suite(
         beta=beta,
         gamma=gamma,
         output_path=greenscore_path,
+        aggregated_energy_paths=aggregated_energy_files,
     )
     
     print(f"  GreenScore: {greenscore_path}")

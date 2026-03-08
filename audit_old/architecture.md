@@ -52,13 +52,13 @@ src/pgsi_analyzer/
 ### 2.1 Flow Summary
 
 1. **cli/main.py**  
-   Parses `pgsi-analyzer benchmark run` (and list). For `run`, calls `load_tool_paths(...)` then **run_benchmark_suite(...)** with algorithms, methods, runs, output_dir, carbon_intensity, alpha, beta, gamma, tool_paths.
+   Parses `pgsi-analyzer benchmark run` (and list). For `run`, calls **load_tool_paths(...)** (which loads .env and runs **verify_tool_paths_against_env**) then **run_benchmark_suite(...)** with algorithms, methods, runs, output_dir, carbon_intensity, alpha, beta, gamma, tool_paths.
 
 2. **benchmark/orchestrator.py**  
    **run_benchmark_suite**:
    - Resolves algorithm/method lists (resolve_algorithms, resolve_methods).
    - **Phase 1:** For each (algorithm, method) with `requires_build(method)`, calls **build_benchmark(...)** (builder); on exception prints "✗ Error" and continues.
-   - **Phase 2:** For each (algorithm, method), calls **execute_benchmark(...)** (executor); on exception prints "✗ Error" and continues.
+   - **Phase 2:** For each (algorithm, method), calls **execute_benchmark(...)** (executor), which writes **Audit Logging** to *output_dir*/.audit.log (exec_args and env PATH, PYTHONPATH, PGSI_RUNS); on exception prints "✗ Error" and continues.
    - **Phase 3–4:** Collects raw CSV paths from execution_results, groups by method, copies into temp dirs, calls **aggregate_energy** / **aggregate_time** per method.
    - **Phase 5–7:** **combine_energy_results**, **combine_time_results**, **calculate_carbon_footprint**, **calculate_greenscore**; writes GreenScore.csv. If no aggregated data at Phase 5, raises **AnalysisError**.
 
@@ -67,7 +67,8 @@ src/pgsi_analyzer/
    - Resolves Python executable via **find_python_executable(method, tool_paths)** (uses ToolPaths).
    - For py_compile: **prepare_py_compile(benchmark_path, tool_paths)** then runs Python on .pyc or main.py.
    - Otherwise: builds `exec_args = [python_exe, path_to_main_py]` (no extra CLI arguments).
-   - Sets **env** = copy of `os.environ`, then sets **PYTHONPATH** to include package root (`Path(__file__).parent.parent.parent`).
+   - Sets **env** = copy of `os.environ`, then sets **PYTHONPATH** to include package root (`Path(__file__).parent.parent.parent`), and **PGSI_RUNS** for the benchmark subprocess.
+   - **Audit logging:** Appends to **output_dir/.audit.log** one record per run: timestamp, algorithm, method, **exec_args** (so the absolute path of the Python interpreter used for cpython/pypy is visible), and env slice **PATH**, **PYTHONPATH**, **PGSI_RUNS**. This proves configured tool paths are used at execution time.
    - Runs **subprocess.run(exec_args, cwd=benchmark_dir, env=exec_env, capture_output=True, text=True, timeout=3600)**.
    - On non-zero return code: raises **MeasurementError** with command, return code, stdout, stderr. On **subprocess.TimeoutExpired**: raises **MeasurementError**. Other exceptions wrapped in **MeasurementError**.
    - After success, locates energy/time CSVs under search dirs (energy_benchmark/, time_benchmark/, etc.) and returns `{ "energy_csv", "time_csv", "system_info" }`.
@@ -86,6 +87,10 @@ src/pgsi_analyzer/
 | **Subprocess → main** | **Filesystem** | Benchmark scripts write CSVs under cwd (energy_benchmark/*.csv, time_benchmark/*.csv). Executor discovers these paths after subprocess.run() returns and returns them in the result dict. |
 
 **Important:** The `runs` parameter from the CLI is passed to **execute_benchmark(runs=...)** but is **not** passed to the benchmark script. The script’s run count is determined by the decorators’ `n` argument, which is set from **DEFAULT_PARAMS** at import time. Thus the CLI `--runs` value does not currently control how many times each benchmark runs inside the subprocess (potential gap; see Spike Rule below).
+
+### 2.3 Audit Logging
+
+After **load_tool_paths** (and optional .env load), **config.verify_tool_paths_against_env(tool_paths)** compares the resolved ToolPaths with `os.environ` (PGSI_PYTHON_PATH, PGSI_PYPY_PATH, PGSI_CC_PATH) so that configured paths can be verified against the process environment. During **execute_benchmark**, each run appends to **output_dir/.audit.log** a record containing the timestamp, algorithm, method, **exec_args** (including the absolute path of the Python interpreter used for cpython and pypy), and the env slice **PATH**, **PYTHONPATH**, **PGSI_RUNS**. This provides a transparent record that command resolution and env injection are correct and that .env-derived paths are not ignored in favor of system defaults.
 
 ---
 

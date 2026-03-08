@@ -8,6 +8,7 @@ with pathlib, platform abstraction, and cross-platform compatibility.
 import csv
 import json
 import time
+import warnings
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
@@ -164,35 +165,33 @@ class TestEnergyMeasurement:
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
-    def test_measure_energy_to_csv_raises_error_on_non_linux(self, mock_is_linux_intel):
-        """Test that energy decorator raises error on non-Linux systems."""
+    def test_measure_energy_to_csv_uses_estimation_on_non_linux(self, mock_is_linux_intel):
+        """When not Linux/Intel, decorator uses estimation and does not raise."""
         mock_is_linux_intel.return_value = False
         
         @measure_energy_to_csv(n=1, csv_filename="test_energy")
         def sample_function():
             return 42
         
-        with pytest.raises(RuntimeError) as exc_info:
-            sample_function()
-        
-        assert "only available on Linux" in str(exc_info.value)
-        assert "Intel x86_64" in str(exc_info.value)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            result = sample_function()
+        assert result == 42
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
-    def test_measure_energy_to_csv_raises_error_if_pyrapl_not_installed(self, mock_is_linux_intel):
-        """Test that energy decorator raises error if pyRAPL not installed."""
+    def test_measure_energy_to_csv_uses_estimation_if_pyrapl_unavailable(self, mock_is_linux_intel):
+        """When pyRAPL is not available, decorator uses estimation and does not raise."""
         mock_is_linux_intel.return_value = True
         
         @measure_energy_to_csv(n=1, csv_filename="test_energy")
         def sample_function():
             return 42
         
-        with pytest.raises(RuntimeError) as exc_info:
-            sample_function()
-        
-        assert "pyRAPL is not available" in str(exc_info.value)
-        assert "pip install" in str(exc_info.value)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            result = sample_function()
+        assert result == 42
 
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
@@ -256,6 +255,7 @@ class TestEnergyMeasurement:
                 assert 'package (uJ)' in rows[0]
                 assert 'dram (uJ)' in rows[0]
                 assert 'measurement_method' in rows[0]
+                assert 'methodology' in rows[0]
                 
                 # Check data rows
                 assert len(rows) == 3  # Header + 2 data rows
@@ -264,6 +264,7 @@ class TestEnergyMeasurement:
                 assert rows[1][3] == '1000000'  # Package energy
                 assert rows[1][4] == '500000'    # DRAM energy
                 assert rows[1][5] == 'hardware'  # Measurement method
+                assert rows[1][6] == 'hardware_rapl_linux'  # Methodology (audit)
 
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
