@@ -120,6 +120,7 @@ def calculate_greenscore(
         - 'green_score': Composite GreenScore
         - 'points_measured': (if aggregated_energy_paths given) Count of hardware-measured points
         - 'points_estimated': (if aggregated_energy_paths given) Count of estimated points
+        - 'data_source_consistency': "Consistent" or "Inconsistent Data Source" (when method has both hardware and estimation)
 
     Examples:
         >>> energy_df = pd.read_csv('energy.csv')
@@ -162,6 +163,12 @@ def calculate_greenscore(
     else:
         mean_df["points_measured"] = 0
         mean_df["points_estimated"] = 0
+
+    # Step 4c: Methodology consistency — flag "Inconsistent Data Source" when a method has both hardware and estimation
+    mean_df["data_source_consistency"] = mean_df.apply(
+        lambda r: "Inconsistent Data Source" if (r["points_measured"] > 0 and r["points_estimated"] > 0) else "Consistent",
+        axis=1,
+    )
     
     # Step 5: Compute GreenScore = α·energy + β·carbon + γ·time
     mean_df['green_score'] = (

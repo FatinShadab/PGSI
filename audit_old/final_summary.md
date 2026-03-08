@@ -41,6 +41,8 @@ To **scale beyond the current 15 algorithms** (see **benchmarks/registry.py**) a
 
 - **Orchestrator God-file (Issue C):** **Addressed.** **benchmark/results_collector.py** introduces **ResultsCollector** with **collect_paths**, **prepare_aggregation_workspace**, and **get_output_path**. The orchestrator no longer imports **shutil** or **tempfile**; it delegates all CSV collection, workspace preparation, and output path resolution to the collector. **run_benchmark_suite** is a thin coordinator; layout and I/O are testable in isolation. See **audit/architecture.md** §10.1.
 
+- **GreenScore computation and methodology tracking (Issue #4):** **Fully audited and verified.** The GreenScore math (α·energy + β·carbon + γ·time on min–max normalized metrics) is stress-tested in **tests/audit/test_greenscore_integrity.py**. Zero-variance normalization (all methods identical) is handled without division by zero; the score is a stable default (0). **GreenScore.csv** includes **points_measured** and **points_estimated** correctly mapped from the **methodology** column in aggregated energy data (hardware RAPL vs fallback estimation). A **Methodology Consistency** check flags **"Inconsistent Data Source"** when a method has both hardware and estimation points. The **audit_report.json** is augmented after Phase 7 with **data_methodology_summary** (total_points, hardware_percentage, estimation_percentage) and **normalization_bounds** (min/max for energy, time, carbon) so the 0–1 scaling is auditable. See **models/greenscore.py** and **benchmark/orchestrator.py**.
+
 ### 3.2 Medium priority: Deterministic run control (PGSI_RUNS)
 
 - **Location:** `benchmark/executor.py`, benchmark scripts / config

@@ -340,7 +340,35 @@ def run_benchmark_suite(
     
     print(f"  GreenScore: {greenscore_path}")
     print()
-    
+
+    # Augment audit_report.json with data_methodology_summary and normalization_bounds
+    try:
+        report_path = output_dir / AUDIT_REPORT_FILENAME
+        if report_path.exists():
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            if "points_measured" in greenscore_df.columns and "points_estimated" in greenscore_df.columns:
+                total_measured = int(greenscore_df["points_measured"].sum())
+                total_estimated = int(greenscore_df["points_estimated"].sum())
+                total_points = total_measured + total_estimated
+                report["data_methodology_summary"] = {
+                    "total_points": total_points,
+                    "hardware_percentage": round(100.0 * total_measured / total_points, 2) if total_points else 0.0,
+                    "estimation_percentage": round(100.0 * total_estimated / total_points, 2) if total_points else 0.0,
+                }
+            else:
+                report["data_methodology_summary"] = {"total_points": 0, "hardware_percentage": 0.0, "estimation_percentage": 0.0}
+            numeric_energy = energy_df.drop(columns=["algorithm"], errors="ignore").select_dtypes(include="number")
+            numeric_time = time_df.drop(columns=["algorithm"], errors="ignore").select_dtypes(include="number")
+            numeric_carbon = carbon_df.drop(columns=["algorithm"], errors="ignore").select_dtypes(include="number")
+            report["normalization_bounds"] = {
+                "energy": {"min": float(numeric_energy.min().min()), "max": float(numeric_energy.max().max())} if not numeric_energy.empty else {"min": None, "max": None},
+                "time": {"min": float(numeric_time.min().min()), "max": float(numeric_time.max().max())} if not numeric_time.empty else {"min": None, "max": None},
+                "carbon": {"min": float(numeric_carbon.min().min()), "max": float(numeric_carbon.max().max())} if not numeric_carbon.empty else {"min": None, "max": None},
+            }
+            report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
     # Final summary
     print("=" * 70)
     print("Benchmark Suite Execution Complete")

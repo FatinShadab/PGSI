@@ -217,3 +217,11 @@ class TestAuditReportProduced:
         assert "path_entries" in data
         assert "timestamp" in data
         assert "severity" in data
+        assert "data_methodology_summary" in data, "audit_report.json must contain data_methodology_summary"
+        assert "total_points" in data["data_methodology_summary"]
+        assert "hardware_percentage" in data["data_methodology_summary"]
+        assert "estimation_percentage" in data["data_methodology_summary"]
+        assert "normalization_bounds" in data
+        assert "energy" in data["normalization_bounds"]
+        assert "time" in data["normalization_bounds"]
+        assert "carbon" in data["normalization_bounds"]
