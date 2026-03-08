@@ -27,6 +27,7 @@ from .results_collector import (
     CARBON_FOOTPRINT,
     GREENSCORE,
 )
+from .provider import FileSystemProvider
 from ..benchmarks.registry import (
     BENCHMARKS,
     list_algorithms,
@@ -118,6 +119,7 @@ def run_benchmark_suite(
     gamma: float = 0.2,
     tool_paths: Optional[ToolPaths] = None,
     path_sources: Optional[dict] = None,
+    provider: Optional[FileSystemProvider] = None,
 ) -> Path:
     """
     Execute full benchmark suite and generate GreenScore CSV.
@@ -142,6 +144,8 @@ def run_benchmark_suite(
         beta: Carbon weight for GreenScore (default: 0.4)
         gamma: Time weight for GreenScore (default: 0.2)
         tool_paths: Optional ToolPaths configuration for Python/PyPy/C compiler
+        path_sources: Optional dict of path source metadata for audit report
+        provider: Optional FileSystemProvider for workspace/path I/O (default: real provider)
         
     Returns:
         Path to final GreenScore.csv file
@@ -246,8 +250,9 @@ def run_benchmark_suite(
             print(f"  ⚠ Audit report: path mismatch detected — see {report_path}")
     except Exception:
         pass  # Do not fail the run if report write fails
-    
-    collector = ResultsCollector()
+
+    fs_provider = provider if provider is not None else FileSystemProvider()
+    collector = ResultsCollector(provider=fs_provider)
 
     # Phase 3: Collect and organize raw CSVs (delegate to ResultsCollector)
     print("Phase 3: Collecting raw measurement data...")
@@ -255,27 +260,27 @@ def run_benchmark_suite(
     method_energy_dirs = collected["energy"]
     method_time_dirs = collected["time"]
 
-    # Phase 4: Aggregate per method (workspace and paths via ResultsCollector)
+    # Phase 4: Aggregate per method (workspace and paths via FileSystemProvider)
     print("Phase 4: Aggregating results per method...")
     aggregated_energy_files: Dict[str, Path] = {}
     aggregated_time_files: Dict[str, Path] = {}
 
     for method in method_list:
         if method in method_energy_dirs and method_energy_dirs[method]:
-            workspace_energy = collector.prepare_aggregation_workspace(
+            workspace_energy = fs_provider.prepare_aggregation_workspace(
                 output_dir, method, method_energy_dirs[method], "energy"
             )
-            agg_energy_path = collector.get_output_path(
+            agg_energy_path = fs_provider.get_output_path(
                 output_dir, method=method, file_type=ENERGY_AGGREGATED
             )
             aggregate_energy(workspace_energy, output_path=agg_energy_path)
             aggregated_energy_files[method] = agg_energy_path
 
         if method in method_time_dirs and method_time_dirs[method]:
-            workspace_time = collector.prepare_aggregation_workspace(
+            workspace_time = fs_provider.prepare_aggregation_workspace(
                 output_dir, method, method_time_dirs[method], "time"
             )
-            agg_time_path = collector.get_output_path(
+            agg_time_path = fs_provider.get_output_path(
                 output_dir, method=method, file_type=TIME_AGGREGATED
             )
             aggregate_time(workspace_time, output_path=agg_time_path)
@@ -291,13 +296,13 @@ def run_benchmark_suite(
             "No aggregated data available. Check benchmark execution results."
         )
 
-    energy_combined_path = collector.get_output_path(output_dir, file_type=ENERGY_COMBINED)
+    energy_combined_path = fs_provider.get_output_path(output_dir, file_type=ENERGY_COMBINED)
     combine_energy_results(
         list(aggregated_energy_files.values()),
         output_path=energy_combined_path,
     )
 
-    time_combined_path = collector.get_output_path(output_dir, file_type=TIME_COMBINED)
+    time_combined_path = fs_provider.get_output_path(output_dir, file_type=TIME_COMBINED)
     combine_time_results(
         list(aggregated_time_files.values()),
         output_path=time_combined_path,
@@ -310,7 +315,7 @@ def run_benchmark_suite(
     # Phase 6: Calculate carbon footprint
     print("Phase 6: Calculating carbon footprint...")
 
-    carbon_path = collector.get_output_path(output_dir, file_type=CARBON_FOOTPRINT)
+    carbon_path = fs_provider.get_output_path(output_dir, file_type=CARBON_FOOTPRINT)
     carbon_df = calculate_carbon_footprint(
         energy_combined_path,
         output_path=carbon_path,
@@ -326,7 +331,7 @@ def run_benchmark_suite(
     energy_df = pd.read_csv(energy_combined_path)
     time_df = pd.read_csv(time_combined_path)
 
-    greenscore_path = collector.get_output_path(output_dir, file_type=GREENSCORE)
+    greenscore_path = fs_provider.get_output_path(output_dir, file_type=GREENSCORE)
     greenscore_df = calculate_greenscore(
         energy_df,
         time_df,

@@ -70,26 +70,23 @@ class TestPreparePyCompile:
 
     @patch('subprocess.run')
     @patch('pathlib.Path.exists')
-    def test_prepare_py_compile_success(self, mock_exists, mock_run):
+    def test_prepare_py_compile_success(self, mock_exists, mock_run, tmp_path):
         """Test successful py_compile preparation."""
         mock_exists.return_value = True
         mock_run.return_value = MagicMock(returncode=0)
-        
-        benchmark_path = Path("/test/benchmark")
+        benchmark_path = tmp_path / "benchmark"
         benchmark_path.mkdir(parents=True, exist_ok=True)
         (benchmark_path / "main.py").touch()
-        
+        (benchmark_path / "__pycache__").mkdir(exist_ok=True)  # so glob("main*.pyc") runs without FileNotFoundError
         with patch('pathlib.Path.is_dir', return_value=True):
             result = prepare_py_compile(benchmark_path)
             assert result == benchmark_path / "main.py"  # Falls back to .py if no .pyc found
 
     @patch('pathlib.Path.exists')
-    def test_prepare_py_compile_no_main_py(self, mock_exists):
+    def test_prepare_py_compile_no_main_py(self, mock_exists, tmp_path):
         """Test py_compile preparation fails when main.py missing."""
         mock_exists.return_value = False
-        
-        benchmark_path = Path("/test/benchmark")
-        
+        benchmark_path = tmp_path / "benchmark"
         with pytest.raises(FileNotFoundError, match="main.py not found"):
             prepare_py_compile(benchmark_path)
 
@@ -106,44 +103,44 @@ class TestExecuteBenchmark:
     @patch('pathlib.Path.glob')
     def test_execute_benchmark_cpython_success(
         self, mock_glob, mock_iterdir, mock_isdir, mock_isfile,
-        mock_exists, mock_run, mock_find_exe
+        mock_exists, mock_run, mock_find_exe, tmp_path
     ):
         """Test successful CPython benchmark execution."""
-        # Setup mocks
         mock_find_exe.return_value = sys.executable
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         mock_isfile.return_value = True
         mock_isdir.return_value = False
         mock_exists.return_value = True
-        
-        # Mock CSV discovery
         mock_iterdir.return_value = [
             MagicMock(name="energy_benchmark", is_dir=lambda: True),
             MagicMock(name="time_benchmark", is_dir=lambda: True),
         ]
-        
-        # Mock glob to return CSV files
+        (tmp_path / "energy_benchmark").mkdir()
+        (tmp_path / "time_benchmark").mkdir()
+        (tmp_path / "energy_benchmark" / "energy_hanoi_cpython.csv").touch()
+        (tmp_path / "time_benchmark" / "time_hanoi_cpython.csv").touch()
+
         def mock_glob_side_effect(pattern):
-            if "energy_benchmark" in str(pattern):
-                return [Path("/test/energy_benchmark/hanoi_cpython.csv")]
-            elif "time_benchmark" in str(pattern):
-                return [Path("/test/time_benchmark/hanoi_cpython.csv")]
+            if "energy_benchmark" in str(pattern) or "energy_" in str(pattern):
+                return [tmp_path / "energy_benchmark" / "energy_hanoi_cpython.csv"]
+            if "time_benchmark" in str(pattern) or "time_" in str(pattern):
+                return [tmp_path / "time_benchmark" / "time_hanoi_cpython.csv"]
             return []
-        
         mock_glob.side_effect = mock_glob_side_effect
-        
-        # Mock pandas read_csv
+
         with patch('pandas.read_csv') as mock_read_csv:
             mock_read_csv.return_value = MagicMock(columns=['package (uJ)'])
-            
-            benchmark_path = Path("/test/benchmark/main.py")
+            benchmark_path = tmp_path / "benchmark" / "main.py"
+            benchmark_path.parent.mkdir(parents=True)
+            benchmark_path.touch()
+            output_dir = tmp_path / "results"
             results = execute_benchmark(
                 algorithm="hanoi",
                 method="cpython",
                 benchmark_path=benchmark_path,
                 runs=5,
+                output_dir=output_dir,
             )
-            
             assert "energy_csv" in results
             assert "time_csv" in results
             mock_run.assert_called_once()
@@ -157,7 +154,7 @@ class TestExecuteBenchmark:
     @patch('pathlib.Path.glob')
     def test_execute_benchmark_sets_pgsi_runs_in_env(
         self, mock_glob, mock_iterdir, mock_isdir, mock_isfile,
-        mock_exists, mock_run, mock_find_exe
+        mock_exists, mock_run, mock_find_exe, tmp_path
     ):
         """Executor must set PGSI_RUNS in subprocess env so benchmark scripts use the run count."""
         mock_find_exe.return_value = sys.executable
@@ -169,34 +166,39 @@ class TestExecuteBenchmark:
             MagicMock(name="energy_benchmark", is_dir=lambda: True),
             MagicMock(name="time_benchmark", is_dir=lambda: True),
         ]
+        (tmp_path / "energy_benchmark").mkdir()
+        (tmp_path / "time_benchmark").mkdir()
+        (tmp_path / "energy_benchmark" / "energy_hanoi_cpython.csv").touch()
+        (tmp_path / "time_benchmark" / "time_hanoi_cpython.csv").touch()
 
         def mock_glob_side_effect(pattern):
-            if "energy_benchmark" in str(pattern):
-                return [Path("/test/energy_benchmark/hanoi_cpython.csv")]
-            if "time_benchmark" in str(pattern):
-                return [Path("/test/time_benchmark/hanoi_cpython.csv")]
+            if "energy_benchmark" in str(pattern) or "energy_" in str(pattern):
+                return [tmp_path / "energy_benchmark" / "energy_hanoi_cpython.csv"]
+            if "time_benchmark" in str(pattern) or "time_" in str(pattern):
+                return [tmp_path / "time_benchmark" / "time_hanoi_cpython.csv"]
             return []
-
         mock_glob.side_effect = mock_glob_side_effect
 
         with patch('pandas.read_csv') as mock_read_csv:
             mock_read_csv.return_value = MagicMock(columns=['package (uJ)'])
-
-            benchmark_path = Path("/test/benchmark/main.py")
+            benchmark_path = tmp_path / "benchmark" / "main.py"
+            benchmark_path.parent.mkdir(parents=True)
+            benchmark_path.touch()
+            output_dir = tmp_path / "results"
             execute_benchmark(
                 algorithm="hanoi",
                 method="cpython",
                 benchmark_path=benchmark_path,
                 runs=7,
+                output_dir=output_dir,
             )
-
             mock_run.assert_called_once()
             call_env = mock_run.call_args[1]["env"]
             assert call_env.get("PGSI_RUNS") == "7"
 
     @patch('pgsi_analyzer.benchmark.executor.find_python_executable')
     @patch('subprocess.run')
-    def test_execute_benchmark_execution_fails(self, mock_run, mock_find_exe):
+    def test_execute_benchmark_execution_fails(self, mock_run, mock_find_exe, tmp_path):
         """Test benchmark execution failure handling."""
         mock_find_exe.return_value = sys.executable
         mock_run.return_value = MagicMock(
@@ -204,9 +206,10 @@ class TestExecuteBenchmark:
             stdout="error",
             stderr="failed"
         )
-        
-        benchmark_path = Path("/test/benchmark/main.py")
-        
+        benchmark_path = tmp_path / "benchmark" / "main.py"
+        benchmark_path.parent.mkdir(parents=True)
+        benchmark_path.touch()
+        output_dir = tmp_path / "results"
         with patch('pathlib.Path.exists', return_value=True):
             with patch('pathlib.Path.is_file', return_value=True):
                 with pytest.raises(MeasurementError, match="Benchmark execution failed"):
@@ -215,18 +218,20 @@ class TestExecuteBenchmark:
                         method="cpython",
                         benchmark_path=benchmark_path,
                         runs=5,
+                        output_dir=output_dir,
                     )
 
     @patch('pgsi_analyzer.benchmark.executor.find_python_executable')
     @patch('subprocess.run')
-    def test_execute_benchmark_timeout(self, mock_run, mock_find_exe):
+    def test_execute_benchmark_timeout(self, mock_run, mock_find_exe, tmp_path):
         """Test benchmark execution timeout handling."""
         import subprocess
         mock_find_exe.return_value = sys.executable
         mock_run.side_effect = subprocess.TimeoutExpired("python", 3600)
-        
-        benchmark_path = Path("/test/benchmark/main.py")
-        
+        benchmark_path = tmp_path / "benchmark" / "main.py"
+        benchmark_path.parent.mkdir(parents=True)
+        benchmark_path.touch()
+        output_dir = tmp_path / "results"
         with patch('pathlib.Path.exists', return_value=True):
             with patch('pathlib.Path.is_file', return_value=True):
                 with pytest.raises(MeasurementError, match="timed out"):
@@ -235,15 +240,14 @@ class TestExecuteBenchmark:
                         method="cpython",
                         benchmark_path=benchmark_path,
                         runs=5,
+                        output_dir=output_dir,
                     )
 
     @patch('pathlib.Path.exists')
-    def test_execute_benchmark_no_main_py(self, mock_exists):
+    def test_execute_benchmark_no_main_py(self, mock_exists, tmp_path):
         """Test execution fails when main.py not found."""
         mock_exists.return_value = False
-        
-        benchmark_path = Path("/test/benchmark")
-        
+        benchmark_path = tmp_path / "benchmark"
         with pytest.raises(FileNotFoundError, match="Could not find main.py"):
             execute_benchmark(
                 algorithm="hanoi",

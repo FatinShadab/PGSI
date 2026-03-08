@@ -102,15 +102,15 @@ class TestResultsCollectorPrepareAggregationWorkspace:
     """Test ResultsCollector.prepare_aggregation_workspace."""
 
     def test_prepare_aggregation_workspace_copies_csvs(self, tmp_path):
-        """prepare_aggregation_workspace creates dir and copies *.csv from raw_dirs."""
+        """prepare_aggregation_workspace creates dir and copies energy_*.csv from raw_dirs."""
         collector = ResultsCollector()
         raw1 = tmp_path / "raw1"
         raw1.mkdir()
-        (raw1 / "a.csv").write_text("col\n1\n")
-        (raw1 / "b.csv").write_text("col\n2\n")
+        (raw1 / "energy_a.csv").write_text("col\n1\n")
+        (raw1 / "energy_b.csv").write_text("col\n2\n")
         raw2 = tmp_path / "raw2"
         raw2.mkdir()
-        (raw2 / "c.csv").write_text("col\n3\n")
+        (raw2 / "energy_c.csv").write_text("col\n3\n")
         out = tmp_path / "results"
         out.mkdir()
 
@@ -119,6 +119,6 @@ class TestResultsCollectorPrepareAggregationWorkspace:
         )
         assert workspace == out / "temp_energy_cpython"
         assert workspace.exists()
-        assert (workspace / "a.csv").read_text() == "col\n1\n"
-        assert (workspace / "b.csv").read_text() == "col\n2\n"
-        assert (workspace / "c.csv").read_text() == "col\n3\n"
+        assert (workspace / "energy_a.csv").read_text() == "col\n1\n"
+        assert (workspace / "energy_b.csv").read_text() == "col\n2\n"
+        assert (workspace / "energy_c.csv").read_text() == "col\n3\n"

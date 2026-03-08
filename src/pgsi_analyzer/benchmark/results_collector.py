@@ -1,20 +1,21 @@
 """
 Results collection and filesystem layout for the benchmark pipeline.
 
-Delegates file movement and path resolution so the orchestrator can focus on
-pipeline coordination. Ensures the output directory structure matches the
-contract expected by combination models (method name = parent directory of
-aggregated files). Uses strict regex for file naming and validates methods
-against the benchmark registry.
+Groups raw CSV paths by method (collect_paths). Filesystem I/O (workspace
+preparation, output path resolution) is delegated to FileSystemProvider;
+ResultsCollector retains backward compatibility by delegating to a default
+provider when prepare_aggregation_workspace or get_output_path are called.
 """
 
 import re
-import shutil
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, TYPE_CHECKING
 
 from ..utils.errors import AuditError
 from ..benchmarks.registry import VALID_METHODS
+
+if TYPE_CHECKING:
+    from .provider import FileSystemProvider
 
 # Allowed filename patterns (audit): only these are copied into aggregation workspace
 ENERGY_CSV_PATTERN = re.compile(r"^energy_.*\.csv$")
@@ -34,10 +35,13 @@ GREENSCORE = "GreenScore"
 
 class ResultsCollector:
     """
-    Handles grouping of raw CSV paths by method and preparation of aggregation
-    workspaces. Centralizes output path naming so the pipeline layout is
-    consistent and the combination models receive paths under output_dir/<method>/.
+    Handles grouping of raw CSV paths by method. Workspace and path resolution
+    delegate to FileSystemProvider (default instance) for backward compatibility.
     """
+
+    def __init__(self, provider: "FileSystemProvider" = None) -> None:
+        from .provider import FileSystemProvider as _FS
+        self._provider = provider if provider is not None else _FS()
 
     def collect_paths(
         self,
@@ -94,34 +98,8 @@ class ResultsCollector:
         raw_dirs: List[Path],
         kind: str,
     ) -> Path:
-        """
-        Create a workspace directory and copy all raw CSVs from raw_dirs into it.
-        Used so aggregate_energy / aggregate_time can read from a single folder.
-
-        Args:
-            output_dir: Base output directory (e.g. results/).
-            method: Execution method name (e.g. cpython, pypy).
-            raw_dirs: List of directories that contain raw CSV files.
-            kind: "energy" or "time" (used for temp dir naming).
-
-        Returns:
-            Path to the created directory containing the copied CSV files.
-        """
-        workspace = output_dir / f"temp_{kind}_{method}"
-        workspace.mkdir(parents=True, exist_ok=True)
-        pattern = ENERGY_CSV_PATTERN if kind == "energy" else TIME_CSV_PATTERN
-        for dir_path in raw_dirs:
-            dir_path = Path(dir_path)
-            if not dir_path.is_dir():
-                continue
-            for entry in dir_path.iterdir():
-                if entry.name in GARBAGE_ENTRIES:
-                    continue
-                if not entry.is_file():
-                    continue
-                if pattern.match(entry.name):
-                    shutil.copy2(entry, workspace / entry.name)
-        return workspace
+        """Delegate to FileSystemProvider. See provider.prepare_aggregation_workspace."""
+        return self._provider.prepare_aggregation_workspace(output_dir, method, raw_dirs, kind)
 
     def get_output_path(
         self,
@@ -129,33 +107,5 @@ class ResultsCollector:
         method: str = None,
         file_type: str = None,
     ) -> Path:
-        """
-        Centralize output path for aggregated and combined files.
-
-        Args:
-            output_dir: Base output directory.
-            method: Execution method (required for energy_aggregated, time_aggregated).
-            file_type: One of energy_aggregated, time_aggregated, energy_combined,
-                       time_combined, carbon_footprint, GreenScore.
-
-        Returns:
-            Path where the file should be written.
-        """
-        output_dir = Path(output_dir)
-        if file_type == ENERGY_AGGREGATED or file_type == TIME_AGGREGATED:
-            if not method:
-                raise ValueError("method required for energy_aggregated / time_aggregated")
-            method_dir = output_dir / method
-            method_dir.mkdir(parents=True, exist_ok=True)
-            if file_type == ENERGY_AGGREGATED:
-                return method_dir / "energy_aggregated.csv"
-            return method_dir / "time_aggregated.csv"
-        if file_type == ENERGY_COMBINED:
-            return output_dir / "energy_combined.csv"
-        if file_type == TIME_COMBINED:
-            return output_dir / "time_combined.csv"
-        if file_type == CARBON_FOOTPRINT:
-            return output_dir / "carbon_footprint.csv"
-        if file_type == GREENSCORE:
-            return output_dir / "GreenScore.csv"
-        raise ValueError(f"Unknown file_type: {file_type}")
+        """Delegate to FileSystemProvider. See provider.get_output_path."""
+        return self._provider.get_output_path(output_dir, method=method, file_type=file_type)

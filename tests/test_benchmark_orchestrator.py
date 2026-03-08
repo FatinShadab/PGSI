@@ -12,6 +12,15 @@ from pgsi_analyzer.benchmark.orchestrator import (
     resolve_methods,
     run_benchmark_suite,
 )
+from pgsi_analyzer.benchmark.provider import FileSystemProvider
+from pgsi_analyzer.benchmark.results_collector import (
+    ENERGY_AGGREGATED,
+    TIME_AGGREGATED,
+    ENERGY_COMBINED,
+    TIME_COMBINED,
+    CARBON_FOOTPRINT,
+    GREENSCORE,
+)
 from pgsi_analyzer.utils import AnalysisError, MeasurementError
 
 
@@ -372,4 +381,79 @@ class TestRunBenchmarkSuite:
         assert result.name == "GreenScore.csv"
         assert mock_execute.call_count == 2
         mock_greenscore.assert_called_once()
+
+    @patch('pgsi_analyzer.benchmark.orchestrator.build_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.execute_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.aggregate_energy')
+    @patch('pgsi_analyzer.benchmark.orchestrator.aggregate_time')
+    @patch('pgsi_analyzer.benchmark.orchestrator.combine_energy_results')
+    @patch('pgsi_analyzer.benchmark.orchestrator.combine_time_results')
+    @patch('pgsi_analyzer.benchmark.orchestrator.calculate_carbon_footprint')
+    @patch('pgsi_analyzer.benchmark.orchestrator.calculate_greenscore')
+    @patch('pgsi_analyzer.benchmark.orchestrator.get_benchmark_path')
+    @patch('pgsi_analyzer.benchmark.orchestrator.requires_build')
+    @patch('pandas.read_csv')
+    def test_run_benchmark_suite_uses_injected_provider(
+        self, mock_read_csv, mock_requires_build, mock_get_path,
+        mock_greenscore, mock_carbon, mock_combine_time, mock_combine_energy,
+        mock_agg_time, mock_agg_energy, mock_execute, mock_build,
+        tmp_path,
+    ):
+        """Pipeline logic uses injected FileSystemProvider; no direct shutil/path I/O from orchestrator."""
+        mock_requires_build.return_value = False
+        mock_get_path.return_value = tmp_path / "bench" / "main.py"
+        (tmp_path / "bench").mkdir()
+        (tmp_path / "bench" / "main.py").write_text("")
+        out = tmp_path / "results"
+        out.mkdir()
+        energy_ws = tmp_path / "temp_energy_cpython"
+        time_ws = tmp_path / "temp_time_cpython"
+        energy_ws.mkdir()
+        time_ws.mkdir()
+        (energy_ws / "energy_hanoi_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,100,0,e,m\n")
+        (time_ws / "time_hanoi_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
+        mock_execute.return_value = {
+            "energy_csv": energy_ws / "energy_hanoi_cpython.csv",
+            "time_csv": time_ws / "time_hanoi_cpython.csv",
+        }
+        mock_agg_energy.return_value = None
+        mock_agg_time.return_value = None
+        mock_combine_energy.return_value = None
+        mock_combine_time.return_value = None
+        mock_carbon.return_value = MagicMock()
+        mock_greenscore.return_value = pd.DataFrame({"method": ["cpython"], "green_score": [0.5]})
+        mock_read_csv.return_value = pd.DataFrame({"algorithm": ["hanoi"], "cpython": [100.0]})
+        (out / "energy_combined.csv").write_text("algorithm,cpython\nhanoi,100\n")
+        (out / "time_combined.csv").write_text("algorithm,cpython\nhanoi,1.0\n")
+
+        mock_provider = MagicMock(spec=FileSystemProvider)
+        mock_provider.prepare_aggregation_workspace.return_value = energy_ws
+        def _get_output_path(od, method=None, file_type=None):
+            od = Path(od)
+            if method and file_type == ENERGY_AGGREGATED:
+                return od / method / "energy_aggregated.csv"
+            if method and file_type == TIME_AGGREGATED:
+                return od / method / "time_aggregated.csv"
+            if file_type == ENERGY_COMBINED:
+                return od / "energy_combined.csv"
+            if file_type == TIME_COMBINED:
+                return od / "time_combined.csv"
+            if file_type == CARBON_FOOTPRINT:
+                return od / "carbon_footprint.csv"
+            if file_type == GREENSCORE:
+                return od / "GreenScore.csv"
+            return od / "out.csv"
+        mock_provider.get_output_path.side_effect = _get_output_path
+
+        result = run_benchmark_suite(
+            algorithms=["hanoi"],
+            methods=["cpython"],
+            runs=2,
+            output_dir=out,
+            provider=mock_provider,
+        )
+
+        assert result == out / "GreenScore.csv"
+        mock_provider.prepare_aggregation_workspace.assert_called()
+        mock_provider.get_output_path.assert_called()
 

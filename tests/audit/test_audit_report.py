@@ -151,26 +151,27 @@ class TestAuditReportProduced:
         (tmp_path / "bench" / "main.py").write_text("")
         out_dir = tmp_path / "results"
         out_dir.mkdir()
-        energy_dir = out_dir / "temp_energy_cpython"
-        time_dir = out_dir / "temp_time_cpython"
-        energy_dir.mkdir()
-        time_dir.mkdir()
-        (energy_dir / "energy_hanoi_cpython.csv").write_text(
+        # Raw dirs (where "execution" wrote CSVs) must differ from workspace temp_energy_* so provider copy works
+        raw_energy_dir = out_dir / "run_energy"
+        raw_time_dir = out_dir / "run_time"
+        raw_energy_dir.mkdir()
+        raw_time_dir.mkdir()
+        (raw_energy_dir / "energy_hanoi_cpython.csv").write_text(
             "timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,100,0,e,m\n"
         )
-        (time_dir / "time_hanoi_cpython.csv").write_text(
+        (raw_time_dir / "time_hanoi_cpython.csv").write_text(
             "timestamp,function,run,execution_time (s)\n0,a,1,1.0\n"
         )
         mock_execute.return_value = {
-            "energy_csv": energy_dir / "energy_hanoi_cpython.csv",
-            "time_csv": time_dir / "time_hanoi_cpython.csv",
+            "energy_csv": raw_energy_dir / "energy_hanoi_cpython.csv",
+            "time_csv": raw_time_dir / "time_hanoi_cpython.csv",
         }
         mock_collector = MagicMock()
         mock_collector.collect_paths.return_value = {
-            "energy": {"cpython": [energy_dir]},
-            "time": {"cpython": [time_dir]},
+            "energy": {"cpython": [raw_energy_dir]},
+            "time": {"cpython": [raw_time_dir]},
         }
-        mock_collector.prepare_aggregation_workspace.return_value = energy_dir
+        mock_collector.prepare_aggregation_workspace.return_value = raw_energy_dir
 
         def _get_output_path(od, method=None, file_type=None):
             od = Path(od)
