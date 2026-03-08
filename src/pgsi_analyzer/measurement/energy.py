@@ -111,20 +111,17 @@ def measure_energy_to_csv(
                     encoding='utf-8'
                 )
 
-            # Open the result CSV file and write the data
-            with result_file_path.open(mode='a', newline='', encoding='utf-8') as result_file:
+            # Open the result CSV file and write the data (overwrite each run so row count = n)
+            with result_file_path.open(mode='w', newline='', encoding='utf-8') as result_file:
                 writer = csv.writer(result_file)
-
-                # If file doesn't exist, write the header
-                if result_file.tell() == 0:
-                    writer.writerow([
-                        'timestamp',
-                        'function',
-                        'run',
-                        'package (uJ)',
-                        'dram (uJ)',
-                        'measurement_method'
-                    ])
+                writer.writerow([
+                    'timestamp',
+                    'function',
+                    'run',
+                    'package (uJ)',
+                    'dram (uJ)',
+                    'measurement_method'
+                ])
 
                 # Run the function n times and log energy usage
                 estimation_model = None

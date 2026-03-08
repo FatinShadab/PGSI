@@ -60,18 +60,15 @@ def measure_time_to_csv(
                     encoding='utf-8'
                 )
 
-            # Open the result CSV file and write the data
-            with result_file_path.open(mode='a', newline='', encoding='utf-8') as result_file:
+            # Open the result CSV file and write the data (overwrite each run so row count = n)
+            with result_file_path.open(mode='w', newline='', encoding='utf-8') as result_file:
                 writer = csv.writer(result_file)
-
-                # If file doesn't exist, write the header
-                if result_file.tell() == 0:
-                    writer.writerow([
-                        'timestamp',
-                        'function',
-                        'run',
-                        'execution_time (s)'
-                    ])
+                writer.writerow([
+                    'timestamp',
+                    'function',
+                    'run',
+                    'execution_time (s)'
+                ])
 
                 # Run the function n times and log execution time
                 for i in range(1, n + 1):

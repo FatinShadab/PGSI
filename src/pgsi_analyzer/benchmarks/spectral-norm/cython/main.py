@@ -9,11 +9,11 @@ from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_
 
 from typing import List
 
-@measure_energy_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_cpython")
+@measure_energy_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_cython")
 def run_energy_benchmark(matrix: List[List[int]], iterations=10) -> None:
     spectral_norm(matrix, iterations)
 
-@measure_time_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_cpython")
+@measure_time_to_csv(n=get_measurement_runs("spectral-norm"), csv_filename="spectral_norm_cython")
 def run_time_benchmark(matrix: List[List[int]], iterations=10) -> None:
     spectral_norm(matrix, iterations)
     
