@@ -19,7 +19,7 @@ import sys
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any, Tuple
 
 try:
     from dotenv import load_dotenv
@@ -186,7 +186,8 @@ def load_tool_paths(
                        if env_file is not provided
     
     Returns:
-        ToolPaths object with resolved paths
+        Tuple of (ToolPaths object with resolved paths, path_sources dict for audit).
+        path_sources: {"python"|"pypy"|"c_compiler": {"path": str, "source": "cli"|"env"|"system_default"|"unavailable"}}
     """
     # Step 1: Load .env file if provided or auto-load enabled
     if HAS_DOTENV:
@@ -207,47 +208,64 @@ def load_tool_paths(
             UserWarning
         )
     
-    # Step 2: Resolve paths in priority order
+    # Step 2: Resolve paths in priority order and record source for audit
+    path_sources: Dict[str, Dict[str, Any]] = {}
+    SOURCE_CLI = "cli"
+    SOURCE_ENV = "env"
+    SOURCE_SYSTEM_DEFAULT = "system_default"
+
     # Python path
     python_path = None
+    python_source = SOURCE_SYSTEM_DEFAULT
     if cli_python:
         python_path = _resolve_path(cli_python)
+        python_source = SOURCE_CLI
     elif os.getenv("PGSI_PYTHON_PATH"):
         python_path = _resolve_path(os.getenv("PGSI_PYTHON_PATH"))
-    
+        python_source = SOURCE_ENV
     if not python_path:
-        # Default: use current Python interpreter
         python_path = Path(sys.executable)
-    
+    path_sources["python"] = {"path": str(Path(python_path).resolve()), "source": python_source}
+
     # PyPy path
     pypy_path = None
+    pypy_source = SOURCE_SYSTEM_DEFAULT
     if cli_pypy:
         pypy_path = _resolve_path(cli_pypy)
+        pypy_source = SOURCE_CLI
     elif os.getenv("PGSI_PYPY_PATH"):
         pypy_path = _resolve_path(os.getenv("PGSI_PYPY_PATH"))
-    
+        pypy_source = SOURCE_ENV
     if not pypy_path:
-        # Default: try to find on PATH
         pypy_path = _find_pypy_default()
-    
+    path_sources["pypy"] = {
+        "path": str(Path(pypy_path).resolve()) if pypy_path else None,
+        "source": pypy_source if pypy_path else "unavailable",
+    }
+
     # C compiler path
     cc_path = None
+    cc_source = SOURCE_SYSTEM_DEFAULT
     if cli_cc:
         cc_path = _resolve_path(cli_cc)
+        cc_source = SOURCE_CLI
     elif os.getenv("PGSI_CC_PATH"):
         cc_path = _resolve_path(os.getenv("PGSI_CC_PATH"))
-    
+        cc_source = SOURCE_ENV
     if not cc_path:
-        # Default: try to find on PATH
         cc_path = _find_c_compiler_default()
-    
+    path_sources["c_compiler"] = {
+        "path": str(Path(cc_path).resolve()) if cc_path else None,
+        "source": cc_source if cc_path else "unavailable",
+    }
+
     tool_paths = ToolPaths(
         python=python_path,
         pypy=pypy_path,
         c_compiler=cc_path,
     )
     verify_tool_paths_against_env(tool_paths)
-    return tool_paths
+    return tool_paths, path_sources  # type: Tuple[ToolPaths, Dict[str, Dict[str, Any]]]
 
 
 def verify_tool_paths_against_env(tool_paths: ToolPaths) -> list:

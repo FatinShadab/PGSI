@@ -4,14 +4,16 @@ Benchmark execution module.
 Handles subprocess execution of benchmarks with proper isolation
 and environment setup. Ensures compilation time is excluded from
 measurements. Writes audit log (.audit.log) in output_dir for each run.
+Supports AuditLogger for path identity verification and audit_report.json.
 """
 
+import json
 import subprocess
 import sys
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from datetime import datetime
 
 from ..utils import MeasurementError, PlatformError
@@ -19,6 +21,110 @@ from ..platform.detection import detect_platform
 from ..config import ToolPaths
 
 AUDIT_LOG_FILENAME = ".audit.log"
+AUDIT_REPORT_FILENAME = "audit_report.json"
+
+
+def get_runtime_executable(
+    interpreter_path: str,
+    env: Dict[str, str],
+    cwd: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Run the interpreter with -c "import sys; print(sys.executable)" and return
+    the path the runtime reports. Used for path identity verification.
+    """
+    try:
+        result = subprocess.run(
+            [interpreter_path, "-c", "import sys; print(sys.executable)"],
+            env=env,
+            cwd=cwd or os.getcwd(),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0 and result.stdout:
+            return result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        pass
+    return None
+
+
+class AuditLogger:
+    """
+    Captures cmd list and env for every subprocess.run, and path identity
+    (resolved vs runtime-reported) per method for audit_report.json.
+    """
+
+    def __init__(self) -> None:
+        self._executions: List[Dict[str, Any]] = []
+        self._path_identity: Dict[str, Dict[str, Any]] = {}  # method -> resolved, runtime_reported
+
+    def log_execution(
+        self,
+        method: str,
+        algorithm: str,
+        cmd: List[str],
+        env_slice: Dict[str, str],
+        resolved_interpreter: str,
+        runtime_reported_path: Optional[str] = None,
+    ) -> None:
+        self._executions.append({
+            "method": method,
+            "algorithm": algorithm,
+            "cmd": cmd,
+            "env_slice": env_slice,
+            "resolved_interpreter": resolved_interpreter,
+            "runtime_reported_path": runtime_reported_path,
+        })
+        if method not in self._path_identity and runtime_reported_path is not None:
+            self._path_identity[method] = {
+                "resolved": resolved_interpreter,
+                "runtime_reported": runtime_reported_path,
+            }
+
+    def set_path_identity(self, method: str, resolved: str, runtime_reported: Optional[str]) -> None:
+        """Set or update path identity for a method (e.g. after path identity check)."""
+        self._path_identity[method] = {"resolved": resolved, "runtime_reported": runtime_reported or ""}
+
+    def to_report_dict(
+        self,
+        path_sources: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Build the structure for audit_report.json: path_integrity per method,
+        requested/resolved/runtime_reported, source (env/cli/system_default),
+        and severity HIGH if mismatch.
+        """
+        method_to_tool = {"cpython": "python", "pypy": "pypy", "cython": "python", "ctypes": "python", "py_compile": "python"}
+        methods = sorted(self._path_identity.keys())
+        path_entries = []
+        any_mismatch = False
+        for method in methods:
+            tool = method_to_tool.get(method, "python")
+            sources = path_sources.get(tool, {"path": None, "source": "system_default"})
+            requested = sources.get("path") or ""
+            identity = self._path_identity[method]
+            resolved = identity.get("resolved", "")
+            runtime_reported = identity.get("runtime_reported", "")
+            path_ok = bool(resolved and runtime_reported and Path(resolved).resolve() == Path(runtime_reported).resolve())
+            if not path_ok and resolved and runtime_reported:
+                any_mismatch = True
+            path_entries.append({
+                "method": method,
+                "requested_path": requested,
+                "resolved_path": resolved,
+                "runtime_reported_path": runtime_reported,
+                "path_source": sources.get("source", "system_default"),
+                "path_integrity": path_ok,
+            })
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "path_entries": path_entries,
+            "severity": "HIGH" if any_mismatch else "NONE",
+        }
+        if any_mismatch:
+            report["message"] = "Path mismatch detected: resolved interpreter path does not match runtime-reported path (e.g. symlink or PATH shadowing)."
+        return report
 
 
 def _append_audit_log(
@@ -145,6 +251,7 @@ def execute_benchmark(
     output_dir: Path = None,
     env: Optional[Dict[str, str]] = None,
     tool_paths: Optional[ToolPaths] = None,
+    audit_logger: Optional[AuditLogger] = None,
 ) -> Dict[str, Path]:
     """
     Execute a benchmark and collect measurement CSVs.
@@ -215,6 +322,29 @@ def execute_benchmark(
     # Audit log: record exec_args and env for this run (interpreter absolute path for cpython/pypy)
     interpreter_absolute = str(Path(exec_args[0]).resolve()) if exec_args else ""
     _append_audit_log(output_dir, algorithm, method, exec_args, exec_env, interpreter_absolute)
+
+    # Path identity check: run interpreter to get runtime-reported sys.executable (once per method)
+    cwd = str(benchmark_path.parent if benchmark_path.is_file() else benchmark_path)
+    runtime_reported = None
+    if audit_logger is not None:
+        if method not in audit_logger._path_identity:
+            runtime_reported = get_runtime_executable(exec_args[0], exec_env, cwd=cwd)
+            audit_logger.set_path_identity(method, interpreter_absolute, runtime_reported)
+        else:
+            runtime_reported = audit_logger._path_identity[method].get("runtime_reported")
+        env_slice = {
+            "PATH": exec_env.get("PATH", "")[:500] + ("..." if len(exec_env.get("PATH", "")) > 500 else ""),
+            "PYTHONPATH": exec_env.get("PYTHONPATH", ""),
+            "PGSI_RUNS": exec_env.get("PGSI_RUNS", ""),
+        }
+        audit_logger.log_execution(
+            method=method,
+            algorithm=algorithm,
+            cmd=exec_args,
+            env_slice=env_slice,
+            resolved_interpreter=interpreter_absolute,
+            runtime_reported_path=runtime_reported,
+        )
     
     # Execute benchmark
     # The benchmark script will use decorators to write CSVs

@@ -52,13 +52,14 @@ src/pgsi_analyzer/
 ### 2.1 Flow Summary
 
 1. **cli/main.py**  
-   Parses `pgsi-analyzer benchmark run` (and list). For `run`, calls **load_tool_paths(...)** (which loads .env and runs **verify_tool_paths_against_env**) then **run_benchmark_suite(...)** with algorithms, methods, runs, output_dir, carbon_intensity, alpha, beta, gamma, tool_paths.
+   Parses `pgsi-analyzer benchmark run` (and list). For `run`, calls **load_tool_paths(...)** which loads .env, runs **verify_tool_paths_against_env**, and returns **(tool_paths, path_sources)**. Then calls **run_benchmark_suite(...)** with algorithms, methods, runs, output_dir, carbon_intensity, alpha, beta, gamma, tool_paths, and **path_sources** (used for audit_report.json).
 
 2. **benchmark/orchestrator.py**  
    **run_benchmark_suite**:
    - Resolves algorithm/method lists (resolve_algorithms, resolve_methods).
    - **Phase 1:** For each (algorithm, method) with `requires_build(method)`, calls **build_benchmark(...)** (builder); on exception prints "✗ Error" and continues.
-   - **Phase 2:** For each (algorithm, method), calls **execute_benchmark(...)** (executor), which writes **Audit Logging** to *output_dir*/.audit.log (exec_args and env PATH, PYTHONPATH, PGSI_RUNS); on exception prints "✗ Error" and continues.
+   - **Phase 2:** For each (algorithm, method), calls **execute_benchmark(...)** (executor) with an **AuditLogger**; executor performs a **path identity check** (runs interpreter with `-c "import sys; print(sys.executable)"`) once per method and records resolved vs runtime-reported path; writes **Audit Logging** to *output_dir*/.audit.log (exec_args and env PATH, PYTHONPATH, PGSI_RUNS); on exception prints "✗ Error" and continues.
+   - **After Phase 2:** Writes **audit_report.json** to *output_dir* (see §2.4 Runtime Verification).
    - **Phase 3–4:** Collects raw CSV paths from execution_results, groups by method, copies into temp dirs, calls **aggregate_energy** / **aggregate_time** per method.
    - **Phase 5–7:** **combine_energy_results**, **combine_time_results**, **calculate_carbon_footprint**, **calculate_greenscore**; writes GreenScore.csv. If no aggregated data at Phase 5, raises **AnalysisError**.
 
@@ -90,7 +91,22 @@ src/pgsi_analyzer/
 
 ### 2.3 Audit Logging
 
-After **load_tool_paths** (and optional .env load), **config.verify_tool_paths_against_env(tool_paths)** compares the resolved ToolPaths with `os.environ` (PGSI_PYTHON_PATH, PGSI_PYPY_PATH, PGSI_CC_PATH) so that configured paths can be verified against the process environment. During **execute_benchmark**, each run appends to **output_dir/.audit.log** a record containing the timestamp, algorithm, method, **exec_args** (including the absolute path of the Python interpreter used for cpython and pypy), and the env slice **PATH**, **PYTHONPATH**, **PGSI_RUNS**. This provides a transparent record that command resolution and env injection are correct and that .env-derived paths are not ignored in favor of system defaults.
+After **load_tool_paths** (and optional .env load), **config.verify_tool_paths_against_env(tool_paths)** compares the resolved ToolPaths with `os.environ` (PGSI_PYTHON_PATH, PGSI_PYPY_PATH, PGSI_CC_PATH) so that configured paths can be verified against the process environment. **load_tool_paths** also returns **path_sources** (per-tool source: `"cli"`, `"env"`, or `"system_default"`) for the audit report. During **execute_benchmark**, each run appends to **output_dir/.audit.log** a record containing the timestamp, algorithm, method, **exec_args** (including the absolute path of the Python interpreter used for cpython and pypy), and the env slice **PATH**, **PYTHONPATH**, **PGSI_RUNS**. This provides a transparent record that command resolution and env injection are correct and that .env-derived paths are not ignored in favor of system defaults.
+
+### 2.4 Runtime Verification (Audit Report)
+
+To prove that the interpreters/compilers from .env or CLI are the ones actually used by subprocesses (no silent fallback to system defaults), the orchestrator produces **output_dir/audit_report.json** after every suite run.
+
+1. **AuditLogger** (benchmark/executor.py): Captures the cmd list and env slice for every **execute_benchmark** call. Before running the benchmark subprocess, the executor runs a **path identity check**: for each method it runs the interpreter with `-c "import sys; print(sys.executable)"` (once per method) and records the **runtime-reported path**.
+2. **audit_report.json** contents: For each method (cpython, pypy, etc. that ran), the report includes:
+   - **requested_path**: From config (as in .env or CLI).
+   - **resolved_path**: What the tool thinks it is using (absolute).
+   - **runtime_reported_path**: What the subprocess actually reported via `sys.executable`.
+   - **path_source**: `"env"`, `"cli"`, or `"system_default"`.
+   - **path_integrity**: `true` if resolved and runtime-reported paths match (after resolving symlinks); `false` otherwise.
+3. **Severity**: If any method has a path mismatch (e.g. .env specifies PyPy 3.10 but the system ran CPython 3.8, or symlink/PATH shadowing), the report sets **severity** to **"HIGH"** and includes a **message** describing the mismatch.
+
+This allows auditors to confirm that PGSI_PYTHON_PATH and PGSI_PYPY_PATH are honored and that no silent fallback occurred.
 
 ---
 

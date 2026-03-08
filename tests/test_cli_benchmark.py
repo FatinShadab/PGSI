@@ -47,7 +47,7 @@ class TestCLIBenchmarkList:
 class TestCLIBenchmarkRun:
     """Test benchmark run command."""
 
-    @patch('pgsi_analyzer.cli.main.run_benchmark_suite')
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
     def test_benchmark_run_basic(self, mock_run_suite):
         """Test basic benchmark run command."""
         mock_run_suite.return_value = Path("/test/GreenScore.csv")
@@ -68,7 +68,7 @@ class TestCLIBenchmarkRun:
         assert call_args[1]['runs'] == 5
         assert call_args[1]['output_dir'] == Path('/test/results')
 
-    @patch('pgsi_analyzer.cli.main.run_benchmark_suite')
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
     def test_benchmark_run_all_algorithms(self, mock_run_suite):
         """Test benchmark run with all algorithms."""
         mock_run_suite.return_value = Path("/test/GreenScore.csv")
@@ -85,7 +85,7 @@ class TestCLIBenchmarkRun:
         call_args = mock_run_suite.call_args
         assert call_args[1]['algorithms'] == ['all']
 
-    @patch('pgsi_analyzer.cli.main.run_benchmark_suite')
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
     def test_benchmark_run_custom_weights(self, mock_run_suite):
         """Test benchmark run with custom GreenScore weights."""
         mock_run_suite.return_value = Path("/test/GreenScore.csv")
@@ -106,7 +106,7 @@ class TestCLIBenchmarkRun:
         assert call_args[1]['beta'] == 0.3
         assert call_args[1]['gamma'] == 0.2
 
-    @patch('pgsi_analyzer.cli.main.run_benchmark_suite')
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
     def test_benchmark_run_custom_carbon_intensity(self, mock_run_suite):
         """Test benchmark run with custom carbon intensity."""
         mock_run_suite.return_value = Path("/test/GreenScore.csv")
@@ -123,7 +123,7 @@ class TestCLIBenchmarkRun:
         call_args = mock_run_suite.call_args
         assert call_args[1]['carbon_intensity'] == 0.0005
 
-    @patch('pgsi_analyzer.cli.main.run_benchmark_suite')
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
     def test_benchmark_run_error_handling(self, mock_run_suite):
         """Test benchmark run error handling."""
         mock_run_suite.side_effect = ValueError("Invalid algorithm")

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..utils import PGSIAnalyzerError
-from ..benchmark.orchestrator import run_benchmark_suite
+from ..benchmark import orchestrator
 from ..benchmarks.registry import list_algorithms, list_methods
 from ..config import load_tool_paths
 
@@ -185,9 +185,9 @@ Examples:
                 return 0
             
             elif args.benchmark_command == 'run':
-                # Load tool paths from configuration
+                # Load tool paths and path sources (for audit report)
                 env_file = Path(args.env_file) if args.env_file else None
-                tool_paths = load_tool_paths(
+                tool_paths, path_sources = load_tool_paths(
                     env_file=env_file,
                     cli_python=args.python_path,
                     cli_pypy=args.pypy_path,
@@ -195,7 +195,7 @@ Examples:
                 )
                 
                 output_path = Path(args.output)
-                greenscore_path = run_benchmark_suite(
+                greenscore_path = orchestrator.run_benchmark_suite(
                     algorithms=args.algorithms,
                     methods=args.methods,
                     runs=args.runs,
@@ -205,6 +205,7 @@ Examples:
                     beta=args.beta,
                     gamma=args.gamma,
                     tool_paths=tool_paths,
+                    path_sources=path_sources,
                 )
                 print(f"✅ Benchmark suite completed successfully!")
                 print(f"   GreenScore results: {greenscore_path}")

@@ -107,26 +107,34 @@ class TestRunBenchmarkSuite:
     def test_run_benchmark_suite_full_pipeline(
         self, mock_read_csv, mock_requires_build, mock_get_path,
         mock_greenscore, mock_carbon, mock_combine_time, mock_combine_energy,
-        mock_agg_time, mock_agg_energy, mock_execute, mock_build
+        mock_agg_time, mock_agg_energy, mock_execute, mock_build,
+        tmp_path,
     ):
         """Test full benchmark suite pipeline."""
-        # Setup mocks
-        output_dir = Path("/test/results")
+        # Setup mocks (use tmp_path to avoid PermissionError on /test)
+        output_dir = tmp_path / "results"
         output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Mock benchmark paths
-        mock_get_path.return_value = Path("/test/benchmark/main.py")
+        bench_dir = tmp_path / "benchmark"
+        bench_dir.mkdir(parents=True)
+        (bench_dir / "main.py").write_text("")
+        mock_get_path.return_value = bench_dir / "main.py"
         
         # Mock build requirements
         mock_requires_build.side_effect = lambda m: m in ("cython", "ctypes")
         
-        # Mock execution results - need to ensure parent directories exist for glob
-        energy_csv = Path("/test/energy_benchmark/hanoi_cpython.csv")
-        time_csv = Path("/test/time_benchmark/hanoi_cpython.csv")
+        # Mock execution results - use paths under tmp_path for collector
+        energy_dir = tmp_path / "energy_benchmark"
+        time_dir = tmp_path / "time_benchmark"
+        energy_dir.mkdir()
+        time_dir.mkdir()
+        energy_csv = energy_dir / "energy_hanoi_cpython.csv"
+        time_csv = time_dir / "time_hanoi_cpython.csv"
+        energy_csv.write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,100,0,e,m\n")
+        time_csv.write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
         mock_execute.return_value = {
             "energy_csv": energy_csv,
             "time_csv": time_csv,
-            "system_info": Path("/test/system_info.json"),
+            "system_info": tmp_path / "system_info.json",
         }
         
         # Mock aggregation results
@@ -167,25 +175,11 @@ class TestRunBenchmarkSuite:
             pd.DataFrame({"algorithm": ["hanoi"], "cpython": [1.0]}),  # time
         ]
         
-        # The orchestrator gets directories from energy_csv.parent and time_csv.parent
-        # Then calls .glob("*.csv") on those directories
-        # We need to create mock Path objects that have mock parents with glob methods
-        # Create mock CSV Path objects with mock parents
-        mock_energy_csv = MagicMock(spec=Path)
-        mock_energy_csv.__str__ = lambda: str(energy_csv)
-        mock_energy_csv.name = "hanoi_cpython.csv"
-        mock_energy_csv.parent.glob.return_value = [mock_energy_csv]
-        
-        mock_time_csv = MagicMock(spec=Path)
-        mock_time_csv.__str__ = lambda: str(time_csv)
-        mock_time_csv.name = "hanoi_cpython.csv"
-        mock_time_csv.parent.glob.return_value = [mock_time_csv]
-        
-        # Update execute_benchmark to return our mock Path objects
+        # execute_benchmark returns real Paths; collector uses .parent and iterdir
         mock_execute.return_value = {
-            "energy_csv": mock_energy_csv,
-            "time_csv": mock_time_csv,
-            "system_info": Path("/test/system_info.json"),
+            "energy_csv": energy_csv,
+            "time_csv": time_csv,
+            "system_info": tmp_path / "system_info.json",
         }
         
         # Mock shutil.copy2 to avoid file system operations
@@ -227,10 +221,10 @@ class TestRunBenchmarkSuite:
             time_dir = tmp_path / f"time_{method}"
             energy_dir.mkdir()
             time_dir.mkdir()
-            (energy_dir / "hanoi_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method\n0,a,1,100,0,estimation\n")
-            (energy_dir / "sieve_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method\n0,a,1,200,0,estimation\n")
-            (time_dir / "hanoi_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
-            (time_dir / "sieve_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,2.0\n")
+            (energy_dir / "energy_hanoi_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,100,0,estimation,estimated_cpu_tdp\n")
+            (energy_dir / "energy_sieve_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,200,0,estimation,estimated_cpu_tdp\n")
+            (time_dir / "time_hanoi_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
+            (time_dir / "time_sieve_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,2.0\n")
         call_index = [0]
 
         def execute_side_effect(*args, **kwargs):
@@ -238,8 +232,8 @@ class TestRunBenchmarkSuite:
             alg = ["hanoi", "sieve"][call_index[0] // 2]
             call_index[0] += 1
             return {
-                "energy_csv": tmp_path / f"energy_{method}" / f"{alg}_cpython.csv",
-                "time_csv": tmp_path / f"time_{method}" / f"{alg}_cpython.csv",
+                "energy_csv": tmp_path / f"energy_{method}" / f"energy_{alg}_cpython.csv",
+                "time_csv": tmp_path / f"time_{method}" / f"time_{alg}_cpython.csv",
             }
         mock_execute.side_effect = execute_side_effect
         output_dir = tmp_path / "results"
@@ -261,21 +255,26 @@ class TestRunBenchmarkSuite:
         assert (output_dir / "time_combined.csv").exists()
         assert (output_dir / "carbon_footprint.csv").exists()
         assert (output_dir / "GreenScore.csv").exists()
+        assert (output_dir / "audit_report.json").exists()
 
     @patch('pgsi_analyzer.benchmark.orchestrator.get_benchmark_path')
     @patch('pgsi_analyzer.benchmark.orchestrator.requires_build')
-    def test_run_benchmark_suite_builds_required(self, mock_requires_build, mock_get_path):
+    def test_run_benchmark_suite_builds_required(self, mock_requires_build, mock_get_path, tmp_path):
         """Test that benchmarks requiring build are built."""
-        mock_get_path.return_value = Path("/test/benchmark")
+        mock_get_path.return_value = tmp_path / "benchmark"
+        (tmp_path / "benchmark").mkdir()
         mock_requires_build.side_effect = lambda m: m in ("cython", "ctypes")
-        
+        energy_dir = tmp_path / "energy_benchmark"
+        time_dir = tmp_path / "time_benchmark"
+        energy_dir.mkdir()
+        time_dir.mkdir()
+        (energy_dir / "energy_hanoi_cython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,100,0,e,m\n")
+        (time_dir / "time_hanoi_cython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
         with patch('pgsi_analyzer.benchmark.orchestrator.build_benchmark') as mock_build:
-            energy_csv = Path("/test/energy_benchmark/hanoi_cython.csv")
-            time_csv = Path("/test/time_benchmark/hanoi_cython.csv")
             with patch('pgsi_analyzer.benchmark.orchestrator.execute_benchmark') as mock_execute:
                 mock_execute.return_value = {
-                    "energy_csv": energy_csv,
-                    "time_csv": time_csv,
+                    "energy_csv": energy_dir / "energy_hanoi_cython.csv",
+                    "time_csv": time_dir / "time_hanoi_cython.csv",
                 }
                 with patch('pgsi_analyzer.benchmark.orchestrator.aggregate_energy'):
                     with patch('pgsi_analyzer.benchmark.orchestrator.aggregate_time'):
@@ -284,36 +283,15 @@ class TestRunBenchmarkSuite:
                                 with patch('pgsi_analyzer.benchmark.orchestrator.calculate_carbon_footprint'):
                                     with patch('pgsi_analyzer.benchmark.orchestrator.calculate_greenscore'):
                                         with patch('pandas.read_csv'):
-                                            # Create mock CSV Path objects with mock parents
-                                            mock_energy_csv = MagicMock(spec=Path)
-                                            mock_energy_csv.__str__ = lambda: str(energy_csv)
-                                            mock_energy_csv.name = "hanoi_cython.csv"
-                                            mock_energy_csv.parent.glob.return_value = [mock_energy_csv]
-                                            
-                                            mock_time_csv = MagicMock(spec=Path)
-                                            mock_time_csv.__str__ = lambda: str(time_csv)
-                                            mock_time_csv.name = "hanoi_cython.csv"
-                                            mock_time_csv.parent.glob.return_value = [mock_time_csv]
-                                            
-                                            # Update execute_benchmark to return our mock Path objects
-                                            mock_execute.return_value = {
-                                                "energy_csv": mock_energy_csv,
-                                                "time_csv": mock_time_csv,
-                                            }
-                                            
-                                            # Mock shutil.copy2 to avoid file system operations
                                             with patch('shutil.copy2'):
-                                                output_dir = Path("/test/results")
+                                                output_dir = tmp_path / "results"
                                                 output_dir.mkdir(parents=True, exist_ok=True)
-                                                
                                                 run_benchmark_suite(
                                                     algorithms=["hanoi"],
                                                     methods=["cython"],
                                                     runs=5,
                                                     output_dir=output_dir,
                                                 )
-                                                
-                                                # Verify build was called for cython
                                                 mock_build.assert_called()
 
     def test_run_benchmark_suite_invalid_algorithms(self):

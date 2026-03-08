@@ -12,6 +12,7 @@ Coordinates the full benchmark execution pipeline:
 File and path logistics are delegated to ResultsCollector.
 """
 
+import json
 import pandas as pd
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -35,7 +36,7 @@ from ..benchmarks.registry import (
     validate_method,
 )
 from .builder import build_benchmark, requires_build
-from .executor import execute_benchmark
+from .executor import execute_benchmark, AuditLogger, AUDIT_REPORT_FILENAME
 from ..models import (
     aggregate_energy,
     aggregate_time,
@@ -116,6 +117,7 @@ def run_benchmark_suite(
     beta: float = 0.4,
     gamma: float = 0.2,
     tool_paths: Optional[ToolPaths] = None,
+    path_sources: Optional[dict] = None,
 ) -> Path:
     """
     Execute full benchmark suite and generate GreenScore CSV.
@@ -165,8 +167,15 @@ def run_benchmark_suite(
     print(f"  Output directory: {output_dir}")
     print()
     
-    # Track execution results
+    # Track execution results and audit (path identity verification)
     execution_results: Dict[str, Dict[str, Dict[str, Path]]] = defaultdict(dict)
+    audit_logger = AuditLogger()
+    if path_sources is None:
+        path_sources = {
+            "python": {"path": str(tool_paths.python.resolve()) if tool_paths else None, "source": "system_default"},
+            "pypy": {"path": str(tool_paths.pypy.resolve()) if tool_paths and tool_paths.pypy else None, "source": "system_default"},
+            "c_compiler": {"path": str(tool_paths.c_compiler.resolve()) if tool_paths and tool_paths.c_compiler else None, "source": "system_default"},
+        }
     
     # Phase 1: Build benchmarks that require compilation
     print("Phase 1: Building benchmarks...")
@@ -215,6 +224,7 @@ def run_benchmark_suite(
                     runs=runs,
                     output_dir=output_dir,
                     tool_paths=tool_paths,
+                    audit_logger=audit_logger,
                 )
                 
                 execution_results[algorithm][method] = results
@@ -227,6 +237,16 @@ def run_benchmark_suite(
     
     print()
 
+    # Write audit_report.json (path identity and requested/resolved/runtime-reported)
+    try:
+        report = audit_logger.to_report_dict(path_sources)
+        report_path = output_dir / AUDIT_REPORT_FILENAME
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        if report.get("severity") == "HIGH":
+            print(f"  ⚠ Audit report: path mismatch detected — see {report_path}")
+    except Exception:
+        pass  # Do not fail the run if report write fails
+    
     collector = ResultsCollector()
 
     # Phase 3: Collect and organize raw CSVs (delegate to ResultsCollector)
