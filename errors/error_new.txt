@@ -1,0 +1,210 @@
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ pgsi-analyzer benchmark run --algorithms all --methods cpython py_compile ctypes --runs 2 --output output
+Running benchmark suite:
+  Algorithms: 15 (binary-trees, fannkuch-redux, fasta...)
+  Methods: 3 (cpython, ctypes, py_compile)
+  Runs per benchmark: 2
+  Output directory: output
+
+Phase 1: Building benchmarks...
+  Building binary-trees/ctypes... ✓
+  Building fannkuch-redux/ctypes... ✓
+  Building fasta/ctypes... ✓
+  Building hanoi/ctypes... ✓
+  Building k-nucleotide/ctypes... ✓
+  Building knn/ctypes... ✓
+  Building mandelbrot/ctypes... ✓
+  Building n-body/ctypes... ✓
+  Building n-queens/ctypes... ✓
+  Building pi-digits/ctypes... ✓
+  Building regex-redux/ctypes... ✓
+  Building reverse-complement/ctypes... ✓
+  Building sieve/ctypes... ✓
+  Building spectral-norm/ctypes... ✓
+  Building strassen/ctypes... ✓
+
+Phase 2: Executing benchmarks...
+  [1/45] binary-trees/cpython... ✓
+  [2/45] binary-trees/ctypes... ✓
+  [3/45] binary-trees/py_compile... ✓
+  [4/45] fannkuch-redux/cpython... ✓
+  [5/45] fannkuch-redux/ctypes... ✗ Error: Benchmark execution error for fannkuch-redux/ctypes: Benchmark execution failed for fannkuch-redux/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fannkuch-redux/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/fannkuch-redux/ctypes/main.py", line 12, in <module>
+    lib = ctypes.CDLL('./fannkuch.so')  # or 'fannkuch.dll' on Windows
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./fannkuch.so: cannot open shared object file: No such file or directory
+
+  [6/45] fannkuch-redux/py_compile... ✓
+  [7/45] fasta/cpython... ✓
+  [8/45] fasta/ctypes... ✓
+  [9/45] fasta/py_compile... ✓
+  [10/45] hanoi/cpython... ✓
+  [11/45] hanoi/ctypes... ✓
+  [12/45] hanoi/py_compile... ✓
+  [13/45] k-nucleotide/cpython... ✓
+  [14/45] k-nucleotide/ctypes... ✗ Error: Benchmark execution error for k-nucleotide/ctypes: Benchmark execution failed for k-nucleotide/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/k-nucleotide/ctypes/main.py", line 16, in <module>
+    lib = ctypes.CDLL('./libkmer.so')  # or libkmer.dylib / kmer.dll
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libkmer.so: cannot open shared object file: No such file or directory
+
+  [15/45] k-nucleotide/py_compile... ✓
+  [16/45] knn/cpython... ✓
+  [17/45] knn/ctypes... ✓
+  [18/45] knn/py_compile... ✓
+  [19/45] mandelbrot/cpython... ✓
+  [20/45] mandelbrot/ctypes... ✓
+  [21/45] mandelbrot/py_compile... ✓
+  [22/45] n-body/cpython... ✓
+  [23/45] n-body/ctypes... ✓
+  [24/45] n-body/py_compile... ✓
+  [25/45] n-queens/cpython... ✓
+  [26/45] n-queens/ctypes... ✗ Error: Benchmark execution error for n-queens/ctypes: Benchmark execution failed for n-queens/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/n-queens/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/n-queens/ctypes/main.py", line 15, in <module>
+    lib = ctypes.CDLL("./libnqueens.so")
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libnqueens.so: cannot open shared object file: No such file or directory
+
+  [27/45] n-queens/py_compile... ✓
+  [28/45] pi-digits/cpython... ✓
+  [29/45] pi-digits/ctypes... ✗ Error: Benchmark execution error for pi-digits/ctypes: Benchmark execution failed for pi-digits/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/pi-digits/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/pi-digits/ctypes/main.py", line 17, in <module>
+    lib = ctypes.CDLL("./libpi.so")
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libpi.so: cannot open shared object file: No such file or directory
+
+  [30/45] pi-digits/py_compile... ✓
+  [31/45] regex-redux/cpython... ✓
+  [32/45] regex-redux/ctypes... ✗ Error: Benchmark execution error for regex-redux/ctypes: Benchmark execution failed for regex-redux/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/regex-redux/ctypes/main.py", line 14, in <module>
+    lib = ctypes.CDLL("./libregexredux.so")  # Or "regexredux.dll" on Windows
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libregexredux.so: cannot open shared object file: No such file or directory
+
+  [33/45] regex-redux/py_compile... ✓
+  [34/45] reverse-complement/cpython... ✓
+  [35/45] reverse-complement/ctypes... ✗ Error: Benchmark execution error for reverse-complement/ctypes: Benchmark execution failed for reverse-complement/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/reverse-complement/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/reverse-complement/ctypes/main.py", line 13, in <module>
+    lib = ctypes.CDLL('./libreverse.so')
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libreverse.so: cannot open shared object file: No such file or directory
+
+  [36/45] reverse-complement/py_compile... ✓
+  [37/45] sieve/cpython... ✓
+  [38/45] sieve/ctypes... ✗ Error: Benchmark execution error for sieve/ctypes: Benchmark execution failed for sieve/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/ctypes/main.py", line 13, in <module>
+    lib = ctypes.CDLL("./libprime_sieve.so")
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libprime_sieve.so: cannot open shared object file: No such file or directory
+
+  [39/45] sieve/py_compile... ✓
+  [40/45] spectral-norm/cpython... ✓
+  [41/45] spectral-norm/ctypes... ✗ Error: Benchmark execution error for spectral-norm/ctypes: Benchmark execution failed for spectral-norm/ctypes:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/spectral-norm/ctypes/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/spectral-norm/ctypes/main.py", line 13, in <module>
+    lib = ctypes.CDLL('./libspectral.so')  # Or 'spectral.dll' on Windows
+  File "/usr/lib/python3.10/ctypes/__init__.py", line 374, in __init__
+    self._handle = _dlopen(self._name, mode)
+OSError: ./libspectral.so: cannot open shared object file: No such file or directory
+
+  [42/45] spectral-norm/py_compile... ✓
+  [43/45] strassen/cpython... ✓
+  [44/45] strassen/ctypes... ✓
+  [45/45] strassen/py_compile... ✓
+
+Phase 3: Collecting raw measurement data...
+Phase 4: Aggregating results per method...
+
+Phase 5: Combining results across methods...
+  Energy combined: output/energy_combined.csv
+  Time combined: output/time_combined.csv
+
+Phase 6: Calculating carbon footprint...
+  Carbon footprint: output/carbon_footprint.csv
+
+Phase 7: Calculating GreenScore...
+  GreenScore: output/GreenScore.csv
+
+======================================================================
+Benchmark Suite Execution Complete
+======================================================================
+Final GreenScore ranking saved to: output/GreenScore.csv
+
+Top 3 methods by GreenScore (lower is better):
+ method  energy_mean  time_mean  carbon_mean  green_score
+ ctypes     0.333333   0.333333     0.333333     0.333333
+cpython     0.398531   0.488433     0.397264     0.416005
+     py     0.669803   0.619336     0.400000     0.551789
+
+✅ Benchmark suite completed successfully!
+   GreenScore results: output/GreenScore.csv
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ 

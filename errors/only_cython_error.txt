@@ -1,0 +1,86 @@
+env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ pgsi-analyzer benchmark run --algorithms hanoi binary-trees sieve --methods cython -
+-runs 10 --output results-cython/
+Running benchmark suite:
+  Algorithms: 3 (binary-trees, hanoi, sieve...)
+  Methods: 1 (cython)
+  Runs per benchmark: 10
+  Output directory: results-cython
+
+Phase 1: Building benchmarks...
+  Building binary-trees/cython... ✗ Error: Cython build error for /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/cython: Cython build failed for /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/cython:
+stdout: running build_ext
+building 'raw' extension
+x86_64-linux-gnu-gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -g -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -fPIC -I/home/student/Documents/PGSI/env/include -I/usr/include/python3.10 -c raw.c -o build/temp.linux-x86_64-3.10/raw.o
+
+stderr: raw.c:32:10: fatal error: Python.h: No such file or directory
+   32 | #include "Python.h"
+      |          ^~~~~~~~~~
+compilation terminated.
+error: command '/usr/bin/x86_64-linux-gnu-gcc' failed with exit code 1
+
+  Building hanoi/cython... ✗ Error: Cython build error for /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/hanoi/cython: Cython build failed for /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/hanoi/cython:
+stdout: running build_ext
+building 'raw' extension
+x86_64-linux-gnu-gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -g -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -fPIC -I/home/student/Documents/PGSI/env/include -I/usr/include/python3.10 -c raw.c -o build/temp.linux-x86_64-3.10/raw.o
+
+stderr: raw.c:31:10: fatal error: Python.h: No such file or directory
+   31 | #include "Python.h"
+      |          ^~~~~~~~~~
+compilation terminated.
+error: command '/usr/bin/x86_64-linux-gnu-gcc' failed with exit code 1
+
+  Building sieve/cython... ✗ Error: Cython build error for /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/cython: Cython build failed for /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/cython:
+stdout: running build_ext
+building 'raw' extension
+x86_64-linux-gnu-gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -g -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -fPIC -I/home/student/Documents/PGSI/env/include -I/usr/include/python3.10 -c raw.c -o build/temp.linux-x86_64-3.10/raw.o
+
+stderr: raw.c:32:10: fatal error: Python.h: No such file or directory
+   32 | #include "Python.h"
+      |          ^~~~~~~~~~
+compilation terminated.
+error: command '/usr/bin/x86_64-linux-gnu-gcc' failed with exit code 1
+
+
+Phase 2: Executing benchmarks...
+  [1/3] binary-trees/cython... ✗ Error: Benchmark execution error for binary-trees/cython: Benchmark execution failed for binary-trees/cython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/cython/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/binary-trees/cython/main.py", line 4, in <module>
+    import raw  # Import the compiled Cython module
+ModuleNotFoundError: No module named 'raw'
+
+  [2/3] hanoi/cython... ✗ Error: Benchmark execution error for hanoi/cython: Benchmark execution failed for hanoi/cython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/hanoi/cython/main.py
+Return code: 1
+stdout: 
+stderr:   File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/hanoi/cython/main.py", line 46
+    help=f"Number of disks (default: {__default__["hanoi"]["n"]})"
+                                                   ^^^^^
+SyntaxError: f-string: unmatched '['
+
+  [3/3] sieve/cython... ✗ Error: Benchmark execution error for sieve/cython: Benchmark execution failed for sieve/cython:
+Command: /home/student/Documents/PGSI/env/bin/python3 /home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/cython/main.py
+Return code: 1
+stdout: 
+stderr: WARNING:root:imports error 
+ You need to install pymongo>=3.9.0 in order to use MongoOutput 
+/home/student/Documents/PGSI/src/pgsi_analyzer/measurement/energy.py:39: UserWarning: Hardware energy measurement (RAPL) is unavailable: permission denied. Using estimation instead. For RAPL on Linux, run with cap_sys_rawio (e.g. sudo setcap cap_sys_rawio+ep $(which python3)) or as root.
+  warn_if_rapl_unavailable(e)
+Traceback (most recent call last):
+  File "/home/student/Documents/PGSI/src/pgsi_analyzer/benchmarks/sieve/cython/main.py", line 9, in <module>
+    from raw import driver
+ModuleNotFoundError: No module named 'raw'
+
+
+Phase 3: Collecting raw measurement data...
+Phase 4: Aggregating results per method...
+
+Phase 5: Combining results across methods...
+❌ No aggregated data available. Check benchmark execution results.
+(env) student@student-MS-7E02:~/Documents/PGSI/dev_test$ 
