@@ -1,6 +1,5 @@
 // mandelbrot.c
 #include <stdlib.h>
-#include <complex.h>
 
 // Generate the Mandelbrot set and fill a pre-allocated 2D array
 void generate_mandelbrot(int width, int height, int max_iter,
@@ -13,15 +12,20 @@ void generate_mandelbrot(int width, int height, int max_iter,
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            double real = x_min + ((double)x / width) * (x_max - x_min);
-            double imag = y_min + ((double)y / height) * (y_max - y_min);
-            double complex c = real + imag * I;
-            double complex z = 0.0;
+            double cr = x_min + ((double)x / width) * (x_max - x_min);
+            double ci = y_min + ((double)y / height) * (y_max - y_min);
+            double zr = 0.0;
+            double zi = 0.0;
             int iter;
             for (iter = 0; iter < max_iter; iter++) {
-                z = z * z + c;
-                if (cabs(z) > 2.0)
+                double zr2 = zr * zr;
+                double zi2 = zi * zi;
+                if ((zr2 + zi2) > 4.0)
                     break;
+                double new_zi = 2.0 * zr * zi + ci;
+                double new_zr = zr2 - zi2 + cr;
+                zr = new_zr;
+                zi = new_zi;
             }
             output[y * width + x] = iter;
         }

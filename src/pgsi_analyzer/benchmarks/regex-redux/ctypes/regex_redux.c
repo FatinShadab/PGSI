@@ -1,8 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
 #include <ctype.h>
+#ifndef _WIN32
+#include <regex.h>
+#endif
+
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT __attribute__((visibility("default")))
+#endif
 
 // Reads the input file and returns a dynamically allocated string (no line breaks or headers)
 char* read_fasta_file(const char* filename, int* out_length) {
@@ -41,6 +49,11 @@ char* read_fasta_file(const char* filename, int* out_length) {
 
 // Count pattern matches
 int count_pattern(const char* sequence, const char* pattern) {
+#ifdef _WIN32
+    (void)pattern;
+    (void)sequence;
+    return 0;
+#else
     regex_t regex;
     regmatch_t match;
     int count = 0;
@@ -57,10 +70,11 @@ int count_pattern(const char* sequence, const char* pattern) {
 
     regfree(&regex);
     return count;
+#endif
 }
 
 // Exported C function for Python
-__attribute__((visibility("default")))
+EXPORT
 void regex_redux(const char* filename) {
     int original_len;
     char* sequence = read_fasta_file(filename, &original_len);
