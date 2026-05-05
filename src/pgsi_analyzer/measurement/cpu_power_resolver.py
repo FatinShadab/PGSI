@@ -20,6 +20,26 @@ _FUZZY_THRESHOLD = 0.72
 
 @dataclass(frozen=True)
 class CpuPowerResolution:
+    """Structured result returned by :func:`resolve_cpu_power`.
+
+    Attributes:
+        tdp_watts: Resolved thermal design power in watts used for energy estimation.
+        match_type: Strategy that produced the match (`exact`, `regex`, `fuzzy`, `default`).
+        matched_model: Dataset CPU model selected as the best candidate.
+        source: Data source identifier for audit/provenance reporting.
+        normalized_query: Normalized CPU string used during matching.
+
+    Examples:
+        >>> result = CpuPowerResolution(
+        ...     tdp_watts=65.0,
+        ...     match_type="default",
+        ...     matched_model="generic_default",
+        ...     source="generic_tdp_default",
+        ...     normalized_query="unknown",
+        ... )
+        >>> result.tdp_watts
+        65.0
+    """
     tdp_watts: float
     match_type: str
     matched_model: str
@@ -28,6 +48,22 @@ class CpuPowerResolution:
 
 
 def _normalize_cpu_name(cpu_name: str) -> str:
+    """Normalize CPU model strings before dataset matching.
+
+    The resolver removes frequency markers (for example, `@ 3.20GHz`) and vendor
+    trademark noise so that equivalent model labels from different systems map to a
+    single canonical representation. This materially improves exact and fuzzy matching.
+
+    Args:
+        cpu_name: Raw CPU model string collected from runtime environment.
+
+    Returns:
+        str: A lower-cased, whitespace-normalized model string suitable for matching.
+
+    Examples:
+        >>> _normalize_cpu_name("Intel(R) Core(TM) i7-10750H @ 2.60GHz")
+        'intel core i7-10750h'
+    """
     text = (cpu_name or "").lower().strip()
     text = re.sub(r"\(r\)|\(tm\)|®|™", " ", text)
     text = re.sub(r"@\s*\d+(\.\d+)?\s*ghz", " ", text)
@@ -37,7 +73,27 @@ def _normalize_cpu_name(cpu_name: str) -> str:
 
 
 def _parse_tdp_watts(raw_value: str) -> float:
-    """Parse TDP values that may be scalar or range-like strings."""
+    """Parse a TDP value that may be scalar or range-like text.
+
+    Dataset rows can encode TDP as a single number (`65`) or a range (`15-28 W`).
+    Returning the mean for ranges prevents underestimating bursty mobile parts while
+    still keeping one scalar value for pipeline-wide calculations.
+
+    Args:
+        raw_value: Raw TDP cell text from CPU power dataset.
+
+    Returns:
+        float: Parsed scalar TDP in watts.
+
+    Raises:
+        ValueError: If no numeric value can be extracted from ``raw_value``.
+
+    Examples:
+        >>> _parse_tdp_watts("65")
+        65.0
+        >>> _parse_tdp_watts("15-28 W")
+        21.5
+    """
     numbers = re.findall(r"\d+(?:\.\d+)?", raw_value or "")
     if not numbers:
         raise ValueError(f"Unable to parse TDP from value: {raw_value!r}")
@@ -49,6 +105,28 @@ def _parse_tdp_watts(raw_value: str) -> float:
 
 @lru_cache(maxsize=1)
 def _load_dataset() -> List[Dict[str, Any]]:
+    """Load and normalize the packaged CPU power dataset.
+
+    The loader supports both PGSI-curated schema keys and upstream CodeCarbon-style
+    keys so deployments can evolve datasets without forcing code changes.
+    Results are cached at process level to avoid repeated disk IO for every benchmark.
+
+    Returns:
+        List[Dict[str, Any]]: Normalized dataset rows containing model metadata,
+        aliases, and parsed TDP watt values.
+
+    Raises:
+        FileNotFoundError: If the packaged ``cpu_power.csv`` file is missing.
+        OSError: If dataset file cannot be read.
+        ValueError: If TDP parsing fails for a row that otherwise looks valid.
+
+    Examples:
+        >>> rows = _load_dataset()
+        >>> isinstance(rows, list)
+        True
+        >>> "model" in rows[0]
+        True
+    """
     rows: List[Dict[str, Any]] = []
     dataset_path = Path(__file__).resolve().parents[1] / "config" / "cpu_power.csv"
     with dataset_path.open("r", encoding="utf-8", newline="") as f:
@@ -74,6 +152,23 @@ def _load_dataset() -> List[Dict[str, Any]]:
 
 
 def resolve_cpu_power(cpu_name: str) -> CpuPowerResolution:
+    """Resolve CPU TDP from dataset with exact, regex, fuzzy, then default fallback.
+
+    This function is intentionally defensive because benchmark users run on many hosts
+    with inconsistent CPU naming formats. The multi-step strategy maximizes match rate
+    while still producing audit-friendly provenance when falling back to defaults.
+
+    Args:
+        cpu_name: CPU model string detected from the executing machine.
+
+    Returns:
+        CpuPowerResolution: Structured resolution metadata used by energy estimators.
+
+    Examples:
+        >>> result = resolve_cpu_power("Intel Core i7-10750H")
+        >>> result.match_type in {"exact", "regex", "fuzzy", "default"}
+        True
+    """
     normalized = _normalize_cpu_name(cpu_name)
     dataset = _load_dataset()
 

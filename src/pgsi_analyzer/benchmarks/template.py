@@ -111,6 +111,25 @@ pgsi-analyzer benchmark run --algorithms all --methods all --benchmarks-dir . --
 
 
 def _validate_algorithms(algorithms: Iterable[str]) -> List[str]:
+    """Validate algorithm names requested for scaffold generation.
+
+    Validation happens early so CLI users get actionable errors before any filesystem
+    writes occur. This avoids partially generated templates when a typo slips into an
+    algorithm list.
+
+    Args:
+        algorithms: User-requested benchmark algorithm identifiers.
+
+    Returns:
+        List[str]: Sorted unique list of valid algorithm identifiers.
+
+    Raises:
+        ValueError: If any requested algorithm is not present in built-in registry.
+
+    Examples:
+        >>> _validate_algorithms(["hanoi", "hanoi"])
+        ['hanoi']
+    """
     requested = sorted(set(algorithms))
     valid = set(list_algorithms())
     invalid = [name for name in requested if name not in valid]
@@ -123,6 +142,33 @@ def generate_benchmark_template(output_dir: Path, algorithms: Iterable[str], for
     """
     Generate a benchmark project tree for external user projects using
     pre-implemented built-in source files.
+
+    The generator prefers copying shipped benchmark source files so users start from
+    realistic implementations. If a source method does not exist in the package, it
+    falls back to templates that are still runnable and instrumentation-ready.
+
+    Args:
+        output_dir: Target root directory for generated benchmark project.
+        algorithms: Algorithm names to include in the scaffold.
+        force: Whether to allow generation inside a non-empty directory.
+
+    Returns:
+        Path: Path to the generated benchmark project root.
+
+    Raises:
+        ValueError: If algorithm list is invalid or target directory is non-empty
+            and ``force`` is ``False``.
+        OSError: If files/directories cannot be created or copied.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> root = generate_benchmark_template(
+        ...     output_dir=Path("my-benchmarks"),
+        ...     algorithms=["hanoi", "fasta"],
+        ...     force=True,
+        ... )
+        >>> root.name
+        'my-benchmarks'
     """
     root = Path(output_dir)
     selected_algorithms = _validate_algorithms(algorithms)
@@ -166,6 +212,24 @@ def generate_benchmark_template(output_dir: Path, algorithms: Iterable[str], for
 
 
 def _validate_benchmark_name(name: str) -> str:
+    """Validate and normalize a custom benchmark identifier.
+
+    Enforcing a conservative naming pattern prevents invalid paths on different
+    operating systems and keeps registry references stable across CLI operations.
+
+    Args:
+        name: User-provided benchmark name.
+
+    Returns:
+        str: Trimmed benchmark name that passed validation.
+
+    Raises:
+        ValueError: If the name is empty or contains unsupported characters.
+
+    Examples:
+        >>> _validate_benchmark_name("my_algo-1")
+        'my_algo-1'
+    """
     clean = name.strip()
     if not clean:
         raise ValueError("Benchmark name cannot be empty.")
@@ -177,6 +241,26 @@ def _validate_benchmark_name(name: str) -> str:
 
 
 def _upsert_user_registry(benchmarks_dir: Path, benchmark_name: str) -> None:
+    """Insert or update a benchmark entry in the user registry file.
+
+    Registry upsert keeps `create benchmark` idempotent: reruns update paths for the
+    same benchmark key instead of producing duplicate entries.
+
+    Args:
+        benchmarks_dir: Root directory that contains ``pgsi_registry.json``.
+        benchmark_name: Benchmark identifier to register.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If existing registry file contains invalid JSON.
+        OSError: If registry file cannot be read or written.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> _upsert_user_registry(Path("benchmarks"), "my_algo")
+    """
     registry_path = benchmarks_dir / USER_REGISTRY_FILENAME
     if registry_path.exists():
         try:
@@ -205,6 +289,35 @@ def create_benchmark_scaffold(
 ) -> Path:
     """
     Create a single benchmark scaffold under benchmarks_dir and register it.
+
+    This function is optimized for incremental project growth: users can add one
+    algorithm at a time while preserving the same folder contract expected by
+    discovery and orchestrator modules.
+
+    Args:
+        benchmarks_dir: Benchmark project root where scaffold will be created.
+        benchmark_name: Name of the new benchmark folder/key.
+        force: Whether to allow writing into an existing non-empty benchmark folder.
+        register: Whether to update ``pgsi_registry.json`` with the new benchmark.
+
+    Returns:
+        Path: Path to the created benchmark directory.
+
+    Raises:
+        ValueError: If benchmark name is invalid or target directory exists and is
+            non-empty while ``force`` is ``False``.
+        OSError: If files/directories cannot be created or written.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> created = create_benchmark_scaffold(
+        ...     benchmarks_dir=Path("benchmarks"),
+        ...     benchmark_name="my_algo",
+        ...     force=True,
+        ...     register=True,
+        ... )
+        >>> created.name
+        'my_algo'
     """
     root = Path(benchmarks_dir)
     root.mkdir(parents=True, exist_ok=True)

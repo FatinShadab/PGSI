@@ -40,8 +40,55 @@ def measure_time_to_csv(
         >>> result = my_function()
     """
     def decorator(func: Callable):
+        """
+        Wrap a callable with repeatable runtime measurement and CSV logging.
+
+        This inner decorator is intentionally separated from the outer factory so users can
+        configure one measurement policy and apply it to multiple workload functions. The
+        wrapper overwrites the target CSV on each invocation to keep result row counts
+        deterministic (`n` rows) and easier to compare across runs.
+
+        Args:
+            func: Target workload function to execute and time repeatedly.
+
+        Returns:
+            Callable: A wrapped function with the same signature as `func` that writes
+            timing artifacts before returning the final function result.
+
+        Examples:
+            >>> timer = measure_time_to_csv(n=3, csv_filename="hanoi_cpython")
+            >>> @timer
+            ... def workload():
+            ...     return sum(range(1000))
+            >>> result = workload()
+        """
         @wraps(func)
         def wrapper(*args, **kwargs):
+            """
+            Execute the wrapped function `n` times and persist timing artifacts.
+
+            The wrapper captures per-run wall-clock duration, records host system metadata
+            once per output directory, and returns the final invocation result so benchmark
+            call sites can preserve existing control flow.
+
+            Args:
+                *args: Positional arguments forwarded to the wrapped function.
+                **kwargs: Keyword arguments forwarded to the wrapped function.
+
+            Returns:
+                Any: The return value produced by the last execution of the wrapped function.
+
+            Raises:
+                OSError: If output folders/files cannot be created or written.
+                TypeError: If passed arguments are incompatible with the wrapped function.
+
+            Examples:
+                >>> @measure_time_to_csv(n=2, csv_filename="demo")
+                ... def multiply(a, b):
+                ...     return a * b
+                >>> multiply(3, 4)
+                12
+            """
             # Convert folder_name to Path if it's a string
             folder_path = Path(folder_name) if isinstance(folder_name, str) else folder_name
             

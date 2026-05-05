@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "A comprehensive benchmarking and analysis tool for comparing energy consumption, execution time, and carbon footprint of Python execution methods using GreenScore metric"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Md Fatin Shadab Turja"},
 ]
@@ -38,7 +38,6 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Benchmark",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -88,13 +87,15 @@ Issues = "https://github.com/FatinShadab/python-energy-microscope/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["pgsi_analyzer*"]
 
 [tool.setuptools.package-data]
 "pgsi_analyzer" = ["config/*.json", "config/*.yaml", "config/*.csv"]
-"pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py"]
+"pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py", "**/*.dll", "**/*.so"]
 
 [tool.black]
 line-length = 100

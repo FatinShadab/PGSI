@@ -34,11 +34,20 @@ def calculate_carbon_footprint(
         - 'algorithm' column
         - Method columns with '_CO2e_g' suffix (carbon in grams)
 
+    Raises:
+        FileNotFoundError: If ``energy_csv_path`` does not exist.
+        ValueError: If the input CSV is missing the ``algorithm`` column.
+        OSError: If ``output_path`` is provided but cannot be created/written.
+
     Examples:
-        >>> df = calculate_carbon_footprint('energy.csv')
-        >>> df.head()
-        >>> # Save to file
-        >>> df = calculate_carbon_footprint('energy.csv', output_path='carbon.csv')
+        >>> df = calculate_carbon_footprint("results/energy_combined.csv")
+        >>> "algorithm" in df.columns
+        True
+        >>> df = calculate_carbon_footprint(
+        ...     "results/energy_combined.csv",
+        ...     output_path="results/carbon_footprint.csv",
+        ...     carbon_intensity=0.000475,
+        ... )
     """
     # Convert to Path if string
     energy_path = Path(energy_csv_path) if isinstance(energy_csv_path, str) else energy_csv_path
