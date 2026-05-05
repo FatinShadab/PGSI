@@ -92,6 +92,7 @@ include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["pgsi_analyzer*"]
 
 [tool.setuptools.package-data]
 "pgsi_analyzer" = ["config/*.json", "config/*.yaml", "config/*.csv"]
