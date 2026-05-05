@@ -1,0 +1,15 @@
+{
+  "dataset": "CodeCarbon cpu_power.csv snapshot",
+  "upstream_repository": "https://github.com/mlco2/codecarbon",
+  "upstream_file": "codecarbon/data/hardware/cpu_power.csv",
+  "upstream_raw_url": "https://raw.githubusercontent.com/mlco2/codecarbon/master/codecarbon/data/hardware/cpu_power.csv",
+  "upstream_commit_sha_latest_for_file": "811df7ff71473d89178b31f8c22c873bb55d458b",
+  "upstream_commit_url": "https://github.com/mlco2/codecarbon/commit/811df7ff71473d89178b31f8c22c873bb55d458b",
+  "retrieved_at_utc": "2026-05-05T16:19:00Z",
+  "schema": {
+    "columns": ["Name", "TDP"],
+    "tdp_units": "watts"
+  },
+  "license_note": "Retained from upstream CodeCarbon dataset; verify upstream LICENSE before redistribution/release.",
+  "notes": "This file is an upstream snapshot replacement of the prior PGSI placeholder mapping."
+}

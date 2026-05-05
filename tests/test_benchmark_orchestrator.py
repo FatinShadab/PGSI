@@ -303,6 +303,76 @@ class TestRunBenchmarkSuite:
                                                 )
                                                 mock_build.assert_called()
 
+    @patch('pgsi_analyzer.benchmark.orchestrator.get_benchmark_path')
+    @patch('pgsi_analyzer.benchmark.orchestrator.requires_build')
+    @patch('pgsi_analyzer.benchmark.orchestrator.build_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.execute_benchmark')
+    @patch('pgsi_analyzer.benchmark.orchestrator.aggregate_energy')
+    @patch('pgsi_analyzer.benchmark.orchestrator.aggregate_time')
+    @patch('pgsi_analyzer.benchmark.orchestrator.combine_energy_results')
+    @patch('pgsi_analyzer.benchmark.orchestrator.combine_time_results')
+    @patch('pgsi_analyzer.benchmark.orchestrator.calculate_carbon_footprint')
+    @patch('pgsi_analyzer.benchmark.orchestrator.calculate_greenscore')
+    @patch('pandas.read_csv')
+    @patch('shutil.copy2')
+    def test_run_benchmark_suite_uses_per_algorithm_runs(
+        self,
+        _mock_copy2,
+        mock_read_csv,
+        mock_greenscore,
+        mock_carbon,
+        mock_combine_time,
+        mock_combine_energy,
+        mock_agg_time,
+        mock_agg_energy,
+        mock_execute,
+        mock_build,
+        mock_requires_build,
+        mock_get_path,
+        tmp_path,
+    ):
+        """Per-algorithm run overrides are passed to execute_benchmark."""
+        mock_get_path.return_value = tmp_path / "benchmark" / "main.py"
+        (tmp_path / "benchmark").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "benchmark" / "main.py").write_text("")
+        mock_requires_build.return_value = False
+
+        energy_dir = tmp_path / "energy_benchmark"
+        time_dir = tmp_path / "time_benchmark"
+        energy_dir.mkdir(exist_ok=True)
+        time_dir.mkdir(exist_ok=True)
+        (energy_dir / "energy_hanoi_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,100,0,e,m\n")
+        (time_dir / "time_hanoi_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
+        (energy_dir / "energy_sieve_cpython.csv").write_text("timestamp,function,run,package (uJ),dram (uJ),measurement_method,methodology\n0,a,1,100,0,e,m\n")
+        (time_dir / "time_sieve_cpython.csv").write_text("timestamp,function,run,execution_time (s)\n0,a,1,1.0\n")
+
+        def _exec_side_effect(*args, **kwargs):
+            algo = kwargs["algorithm"]
+            return {
+                "energy_csv": energy_dir / f"energy_{algo}_cpython.csv",
+                "time_csv": time_dir / f"time_{algo}_cpython.csv",
+            }
+
+        mock_execute.side_effect = _exec_side_effect
+        mock_read_csv.side_effect = [
+            pd.DataFrame({"algorithm": ["hanoi"], "cpython": [100.0]}),
+            pd.DataFrame({"algorithm": ["hanoi"], "cpython": [1.0]}),
+        ]
+        mock_greenscore.return_value = pd.DataFrame({"method": ["cpython"], "green_score": [0.5]})
+        output_dir = tmp_path / "results"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        run_benchmark_suite(
+            algorithms=["hanoi", "sieve"],
+            methods=["cpython"],
+            runs=5,
+            algorithm_runs={"hanoi": 9, "sieve": 3},
+            output_dir=output_dir,
+        )
+
+        run_calls = [call.kwargs["runs"] for call in mock_execute.call_args_list]
+        assert run_calls == [9, 3]
+
     def test_run_benchmark_suite_invalid_algorithms(self):
         """Test that invalid algorithms raise error."""
         with pytest.raises(ValueError, match="Invalid algorithms"):

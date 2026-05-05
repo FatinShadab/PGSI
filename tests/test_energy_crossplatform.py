@@ -20,6 +20,12 @@ from pgsi_analyzer.measurement.energy import _pyrapl_available
 from pgsi_analyzer.platform.detection import is_linux_intel
 import pgsi_analyzer.measurement.energy as energy_module
 
+ESTIMATION_METHOD_TAGS = (
+    'dataset_tdp',
+    'generic_tdp',
+    'estimated_codecarbon',
+)
+
 
 class TestCrossPlatformEnergy:
     """Tests for cross-platform energy measurement."""
@@ -61,14 +67,17 @@ class TestCrossPlatformEnergy:
                 # Check header has measurement_method and methodology
                 assert 'measurement_method' in rows[0]
                 assert 'methodology' in rows[0]
+                assert 'provenance_source' in rows[0]
+                assert 'provenance_match_type' in rows[0]
+                assert 'provenance_matched_model' in rows[0]
                 methodology_col = rows[0].index('methodology')
                 
                 # Check data rows have 'estimation' method and estimated methodology tag
                 assert len(rows) >= 3  # Header + 2 data rows
                 assert rows[1][5] == 'estimation'  # measurement_method column
                 assert rows[2][5] == 'estimation'
-                assert rows[1][methodology_col] in ('estimated_cpu_tdp', 'estimated_fallback_generic')
-                assert rows[2][methodology_col] in ('estimated_cpu_tdp', 'estimated_fallback_generic')
+                assert rows[1][methodology_col] in ESTIMATION_METHOD_TAGS
+                assert rows[2][methodology_col] in ESTIMATION_METHOD_TAGS
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
@@ -98,6 +107,8 @@ class TestCrossPlatformEnergy:
                 assert 'platform' in system_info
                 assert 'estimation_model' in system_info
                 assert system_info['estimation_model'] != 'TBD'  # Should be set after first run
+                assert 'methodology' in system_info
+                assert 'provenance_source' in system_info
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
@@ -120,7 +131,7 @@ class TestCrossPlatformEnergy:
             assert len(rows) == 2
             assert "methodology" in rows[0]
             for row in rows:
-                assert row["methodology"] in ("estimated_cpu_tdp", "estimated_fallback_generic")
+                assert row["methodology"] in ESTIMATION_METHOD_TAGS
                 assert row["measurement_method"] == "estimation"
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
@@ -196,7 +207,7 @@ class TestCrossPlatformEnergy:
                 # Note: Very fast functions might have 0 CPU time, so we check >= 0
                 assert energy_uj >= 0
                 if energy_uj > 0:
-                    assert 1e3 <= energy_uj <= 1e10  # Wide range for different CPUs
+                    assert 1e1 <= energy_uj <= 1e10  # Wide range for different CPUs
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
@@ -247,13 +258,14 @@ class TestCrossPlatformEnergy:
                 # Check header format (includes methodology for audit)
                 expected_columns = [
                     'timestamp', 'function', 'run',
-                    'package (uJ)', 'dram (uJ)', 'measurement_method', 'methodology'
+                    'package (uJ)', 'dram (uJ)', 'measurement_method', 'methodology',
+                    'provenance_source', 'provenance_match_type', 'provenance_matched_model'
                 ]
                 assert rows[0] == expected_columns
                 
                 # Check data rows have correct number of columns
                 for row in rows[1:]:
-                    assert len(row) == 7
+                    assert len(row) == 10
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)

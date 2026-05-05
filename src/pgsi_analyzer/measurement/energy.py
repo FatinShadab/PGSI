@@ -8,6 +8,7 @@ CPU time, TDP, and utilization models.
 """
 
 import csv
+import inspect
 import json
 import time
 import warnings
@@ -18,7 +19,11 @@ from datetime import datetime
 
 from ..platform.hardware import get_system_info, get_cpu_info, warn_if_rapl_unavailable
 from ..platform.detection import is_linux_intel, detect_platform
-from .estimators import estimate_energy
+from .estimators import (
+    estimate_energy,
+    estimate_energy_from_codecarbon,
+    resolve_cpu_power_provenance,
+)
 
 # Methodology tags for data source labeling (audit)
 METHODOLOGY_HARDWARE_RAPL_LINUX = "hardware_rapl_linux"
@@ -40,6 +45,56 @@ if is_linux_intel():
         _pyrapl_available = False
         pyRAPL = None
         warn_if_rapl_unavailable(e)
+
+
+_codecarbon_available = False
+_codecarbon_tracker_cls = None
+_codecarbon_missing_warned = False
+try:
+    from codecarbon import EmissionsTracker as _tracker_cls
+
+    _codecarbon_tracker_cls = _tracker_cls
+    _codecarbon_available = True
+except Exception:
+    _codecarbon_available = False
+    _codecarbon_tracker_cls = None
+
+
+def _create_codecarbon_tracker():
+    """Build a best-effort CodeCarbon tracker across versions."""
+    if not _codecarbon_available or _codecarbon_tracker_cls is None:
+        return None
+
+    kwargs = {}
+    try:
+        signature = inspect.signature(_codecarbon_tracker_cls.__init__)
+        params = signature.parameters
+        if "save_to_file" in params:
+            kwargs["save_to_file"] = False
+        if "save_to_logger" in params:
+            kwargs["save_to_logger"] = False
+        if "log_level" in params:
+            kwargs["log_level"] = "error"
+    except Exception:
+        # If introspection fails, instantiate with defaults.
+        kwargs = {}
+
+    try:
+        return _codecarbon_tracker_cls(**kwargs)
+    except Exception:
+        return None
+
+
+def _warn_codecarbon_missing_once():
+    """Warn once when CodeCarbon is unavailable in estimation mode."""
+    global _codecarbon_missing_warned
+    if not _codecarbon_available and not _codecarbon_missing_warned:
+        _codecarbon_missing_warned = True
+        warnings.warn(
+            "CodeCarbon is not available; using deterministic CPU-power fallback.",
+            UserWarning,
+            stacklevel=2,
+        )
 
 
 def measure_energy_to_csv(
@@ -90,7 +145,7 @@ def measure_energy_to_csv(
                 platform_name = detect_platform()
                 warnings.warn(
                     f"Hardware energy counters (pyRAPL) not available on {platform_name}. "
-                    f"Using estimation based on CPU time and TDP. "
+                    f"Using estimation (CodeCarbon when available, otherwise CPU time/TDP). "
                     f"Estimated values may differ from actual hardware measurements.",
                     UserWarning,
                     stacklevel=2
@@ -125,6 +180,9 @@ def measure_energy_to_csv(
                     'dram (uJ)',
                     'measurement_method',
                     'methodology',
+                    'provenance_source',
+                    'provenance_match_type',
+                    'provenance_matched_model',
                 ])
 
                 # Run the function n times and log energy usage
@@ -141,27 +199,68 @@ def measure_energy_to_csv(
                         dram_energy = measurement.result.dram[0] if measurement.result.dram else 0
                         method = 'hardware'
                         methodology = METHODOLOGY_HARDWARE_RAPL_LINUX
+                        provenance_source = "rapl_hardware_counter"
+                        provenance_match_type = "exact"
+                        provenance_matched_model = "intel_rapl"
                     else:
-                        # Use estimation for non-Linux platforms
-                        # Measure CPU time
+                        # Use estimation fallback for non-RAPL environments
+                        # Measure CPU/wall time around function execution
                         start_cpu_time = time.process_time()
                         start_wall_time = time.time()
+                        tracker = _create_codecarbon_tracker()
+                        if tracker is None:
+                            _warn_codecarbon_missing_once()
+                        emissions_kg = None
+                        if tracker is not None:
+                            try:
+                                tracker.start()
+                            except Exception:
+                                tracker = None
+
                         result = func(*args, **kwargs)
+
+                        if tracker is not None:
+                            try:
+                                emissions_kg = tracker.stop()
+                            except Exception:
+                                emissions_kg = None
                         end_cpu_time = time.process_time()
                         end_wall_time = time.time()
                         
                         cpu_time = end_cpu_time - start_cpu_time
                         wall_time = end_wall_time - start_wall_time
                         
-                        # Use CPU time for estimation (more accurate for CPU-bound tasks)
-                        estimated_energy, estimation_model, methodology = estimate_energy(
-                            cpu_time,
-                            cpu_info
-                        )
+                        # Prefer CodeCarbon-derived energy when available, else TDP estimation.
+                        if tracker is not None:
+                            estimated_energy, estimation_model, methodology = (
+                                estimate_energy_from_codecarbon(
+                                    cpu_time,
+                                    tracker=tracker,
+                                    emissions_kg=emissions_kg,
+                                    cpu_info=cpu_info,
+                                )
+                            )
+                        else:
+                            estimated_energy, estimation_model, methodology = estimate_energy(
+                                cpu_time,
+                                cpu_info
+                            )
                         
                         package_energy = estimated_energy
                         dram_energy = 0  # DRAM estimation not implemented
                         method = 'estimation'
+                        provenance = {
+                            "source": "codecarbon_runtime",
+                            "match_type": "exact",
+                            "matched_model": "codecarbon_tracker_energy",
+                        }
+                        if methodology != "estimated_codecarbon":
+                            provenance = resolve_cpu_power_provenance(
+                                (cpu_info or {}).get("processor", "Unknown")
+                            )
+                        provenance_source = provenance["source"]
+                        provenance_match_type = provenance["match_type"]
+                        provenance_matched_model = provenance["matched_model"]
                         
                         # Update system info with estimation model on first run
                         if i == 1 and estimation_model:
@@ -169,6 +268,10 @@ def measure_energy_to_csv(
                             system_info['measurement_method'] = 'estimation'
                             system_info['platform'] = detect_platform()
                             system_info['estimation_model'] = estimation_model
+                            system_info['methodology'] = methodology
+                            system_info['provenance_source'] = provenance_source
+                            system_info['provenance_match_type'] = provenance_match_type
+                            system_info['provenance_matched_model'] = provenance_matched_model
                             system_info_path.write_text(
                                 json.dumps(system_info, indent=4),
                                 encoding='utf-8'
@@ -182,6 +285,9 @@ def measure_energy_to_csv(
                         dram_energy,
                         method,
                         methodology,
+                        provenance_source,
+                        provenance_match_type,
+                        provenance_matched_model,
                     ])
             
             return result

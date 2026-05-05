@@ -43,6 +43,39 @@ class TestCLIBenchmarkList:
             assert "Available execution methods" in captured.out
             assert "cpython" in captured.out
 
+    def test_benchmark_list_with_external_benchmarks_dir(self, capsys, tmp_path):
+        """Test listing algorithms includes externally discovered benchmark."""
+        custom_main = tmp_path / "user-benchmarks" / "demo-algo" / "cpython" / "main.py"
+        custom_main.parent.mkdir(parents=True)
+        custom_main.write_text("print('demo')\n")
+
+        result = main([
+            'benchmark', 'list',
+            '--algorithms',
+            '--benchmarks-dir', str(tmp_path / "user-benchmarks"),
+        ])
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "demo-algo" in captured.out
+
+    def test_benchmark_list_autodetects_local_benchmarks_registry(self, capsys, tmp_path):
+        benchmarks_dir = tmp_path / "benchmarks"
+        custom_main = benchmarks_dir / "auto-algo" / "cpython" / "main.py"
+        custom_main.parent.mkdir(parents=True)
+        custom_main.write_text("print('demo')\n")
+        (benchmarks_dir / "pgsi_registry.json").write_text(
+            '{"benchmarks":{"auto-algo":{"cpython":"auto-algo/cpython/main.py"}}}',
+            encoding="utf-8",
+        )
+
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            result = main(['benchmark', 'list', '--algorithms'])
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "auto-algo" in captured.out
+
 
 class TestCLIBenchmarkRun:
     """Test benchmark run command."""
@@ -124,6 +157,23 @@ class TestCLIBenchmarkRun:
         assert call_args[1]['carbon_intensity'] == 0.0005
 
     @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
+    def test_benchmark_run_algorithm_runs_override(self, mock_run_suite):
+        """Test benchmark run with per-algorithm run overrides."""
+        mock_run_suite.return_value = Path("/test/GreenScore.csv")
+
+        result = main([
+            'benchmark', 'run',
+            '--algorithms', 'hanoi', 'sieve',
+            '--methods', 'cpython',
+            '--runs', '5',
+            '--algorithm-runs', 'hanoi=9', 'sieve=3',
+        ])
+
+        assert result == 0
+        call_args = mock_run_suite.call_args
+        assert call_args[1]['algorithm_runs'] == {'hanoi': 9, 'sieve': 3}
+
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
     def test_benchmark_run_error_handling(self, mock_run_suite):
         """Test benchmark run error handling."""
         mock_run_suite.side_effect = ValueError("Invalid algorithm")
@@ -137,6 +187,44 @@ class TestCLIBenchmarkRun:
         
         assert result == 1
 
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
+    def test_benchmark_run_with_external_benchmarks_dir(self, mock_run_suite, tmp_path):
+        """Test external benchmarks directory is forwarded to orchestrator."""
+        mock_run_suite.return_value = Path("/test/GreenScore.csv")
+        custom_benchmarks = tmp_path / "my_benchmarks"
+        custom_benchmarks.mkdir()
+
+        result = main([
+            'benchmark', 'run',
+            '--algorithms', 'hanoi',
+            '--methods', 'cpython',
+            '--runs', '2',
+            '--benchmarks-dir', str(custom_benchmarks),
+        ])
+
+        assert result == 0
+        call_args = mock_run_suite.call_args
+        assert call_args[1]['benchmarks_dir'] == custom_benchmarks
+
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
+    def test_benchmark_run_autodetects_local_benchmarks_registry(self, mock_run_suite, tmp_path):
+        mock_run_suite.return_value = Path("/test/GreenScore.csv")
+        benchmarks_dir = tmp_path / "benchmarks"
+        benchmarks_dir.mkdir()
+        (benchmarks_dir / "pgsi_registry.json").write_text('{"benchmarks":{}}', encoding="utf-8")
+
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            result = main([
+                'benchmark', 'run',
+                '--algorithms', 'hanoi',
+                '--methods', 'cpython',
+                '--runs', '2',
+            ])
+
+        assert result == 0
+        call_args = mock_run_suite.call_args
+        assert call_args[1]['benchmarks_dir'] == benchmarks_dir
+
     def test_benchmark_run_no_command(self, capsys):
         """Test benchmark command without subcommand shows help."""
         result = main(['benchmark'])
@@ -144,4 +232,112 @@ class TestCLIBenchmarkRun:
         assert result == 1
         captured = capsys.readouterr()
         assert "help" in captured.out.lower() or "usage" in captured.out.lower()
+
+
+class TestCLIBenchmarkTemplate:
+    """Test benchmark template scaffold command."""
+
+    def test_benchmark_init_template_generates_structure(self, tmp_path):
+        output_dir = tmp_path / "pgsi-template"
+
+        result = main([
+            'benchmark', 'init-template',
+            '--output', str(output_dir),
+            '--algorithms', 'hanoi',
+        ])
+
+        assert result == 0
+        assert (output_dir / "README.md").exists()
+        assert (output_dir / "hanoi" / "cpython" / "main.py").exists()
+        assert (output_dir / "hanoi" / "pypy" / "main.py").exists()
+        assert (output_dir / "hanoi" / "py_compile" / "main.py").exists()
+        assert (output_dir / "hanoi" / "cython" / "main.py").exists()
+        assert (output_dir / "hanoi" / "cython" / "raw.pyx").exists()
+        assert (output_dir / "hanoi" / "cython" / "setup.py").exists()
+        assert (output_dir / "hanoi" / "ctypes" / "main.py").exists()
+        assert any((output_dir / "hanoi" / "ctypes").glob("*.c"))
+
+    def test_benchmark_init_template_non_empty_without_force_fails(self, tmp_path):
+        output_dir = tmp_path / "pgsi-template"
+        output_dir.mkdir()
+        (output_dir / "existing.txt").write_text("keep", encoding="utf-8")
+
+        result = main([
+            'benchmark', 'init-template',
+            '--output', str(output_dir),
+            '--algorithms', 'hanoi',
+        ])
+
+        assert result == 1
+
+
+class TestCLIStartProject:
+    """Test Django-style startproject command."""
+
+    def test_startproject_generates_structure(self, tmp_path):
+        project_dir = tmp_path / "my-benchmarks"
+
+        result = main([
+            'startproject',
+            str(project_dir),
+            '--algorithms', 'hanoi',
+        ])
+
+        assert result == 0
+        assert (project_dir / "README.md").exists()
+        assert (project_dir / "hanoi" / "cpython" / "main.py").exists()
+        assert (project_dir / "hanoi" / "cython" / "raw.pyx").exists()
+        assert any((project_dir / "hanoi" / "ctypes").glob("*.c"))
+        content = (project_dir / "hanoi" / "cpython" / "main.py").read_text(encoding="utf-8")
+        assert "Towers of Hanoi" in content
+
+    def test_startproject_non_empty_without_force_fails(self, tmp_path):
+        project_dir = tmp_path / "my-benchmarks"
+        project_dir.mkdir()
+        (project_dir / "existing.txt").write_text("keep", encoding="utf-8")
+
+        result = main([
+            'startproject',
+            str(project_dir),
+            '--algorithms', 'hanoi',
+        ])
+
+        assert result == 1
+
+
+class TestCLICreateBenchmark:
+    """Test create benchmark command."""
+
+    def test_create_benchmark_creates_scaffold_and_registry(self, tmp_path):
+        benchmarks_dir = tmp_path / "benchmarks"
+        result = main([
+            'create', 'benchmark',
+            '--name', 'A1',
+            '--benchmarks-dir', str(benchmarks_dir),
+        ])
+        assert result == 0
+        assert (benchmarks_dir / "A1" / "cpython" / "main.py").exists()
+        assert (benchmarks_dir / "A1" / "cython" / "raw.pyx").exists()
+        assert (benchmarks_dir / "pgsi_registry.json").exists()
+
+    def test_create_benchmark_invalid_name_fails(self, tmp_path):
+        benchmarks_dir = tmp_path / "benchmarks"
+        result = main([
+            'create', 'benchmark',
+            '--name', 'A*',
+            '--benchmarks-dir', str(benchmarks_dir),
+        ])
+        assert result == 1
+
+
+class TestCLIDefaultBootstrap:
+    """Test running pgsi-analyzer with no command bootstraps project."""
+
+    def test_no_command_bootstraps_benchmarks_project(self, tmp_path):
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            result = main([])
+
+        assert result == 0
+        assert (tmp_path / "benchmarks" / "README.md").exists()
+        assert (tmp_path / "benchmarks" / "hanoi" / "cpython" / "main.py").exists()
 

@@ -1,14 +1,17 @@
 import os
+from pathlib import Path
+
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 from pgsi_analyzer.config import DEFAULT_PARAMS as __default__, get_measurement_runs
 
 import ctypes
 
-# Load the shared library
-if os.name == "nt":
-    lib = ctypes.CDLL("binary_tree.dll")
-else:
-    lib = ctypes.CDLL("./libbinary_tree.so")
+# Load the shared library (names must match benchmark/builder.py build_ctypes)
+_bench_dir = Path(__file__).resolve().parent
+_c_files = sorted(_bench_dir.glob("*.c"))
+_stem = _c_files[0].stem if _c_files else "binary_tree"
+_lib_path = _bench_dir / (f"{_stem}.dll" if os.name == "nt" else f"lib{_stem}.so")
+lib = ctypes.CDLL(str(_lib_path))
 
 # Define TreeNode struct (forward declaration)
 class TreeNode(ctypes.Structure):

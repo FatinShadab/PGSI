@@ -181,3 +181,7 @@ cython_debug/
 
 dev_test/*
 .pypy-venv
+
+dev/
+
+examples/

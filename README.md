@@ -11,7 +11,7 @@ PGSI Analyzer is a CLI-driven benchmark execution framework that runs a suite of
 ### What It Measures
 
 - **Execution Time**: Precise runtime measurement using Python's `time.time()`
-- **Energy Consumption**: Hardware-based measurement on Linux x86_64 (Intel RAPL counters via pyRAPL) or time-based estimation on other platforms
+- **Energy Consumption**: Cross-platform fallback chain: `pyRAPL` (Linux x86_64) -> `codecarbon` (all platforms) -> CPU-time/TDP estimation
 - **Carbon Footprint**: Derived from energy consumption using configurable carbon intensity factors
 - **GreenScore**: A weighted composite metric integrating energy, carbon, and time (lower is better)
 
@@ -39,6 +39,105 @@ This results in **75 total benchmark combinations** (15 algorithms × 5 methods)
 - Deterministic benchmark registry with automatic discovery
 - Package-integrated benchmarks (no external scripts required)
 
+### Add a Benchmark (Developer Pattern)
+
+End-user workflow (outside package source):
+
+1. Install PGSI Analyzer in your project environment:
+
+```bash
+pip install pgsi-analyzer
+```
+
+Recommended benchmark profile (explicit, production-oriented):
+
+```bash
+pip install "pgsi-analyzer[energy,analysis]"
+```
+
+2. Generate a benchmark scaffold in your own project folder:
+
+```bash
+pgsi-analyzer startproject my-benchmarks --algorithms hanoi
+```
+
+Equivalent command (also supported):
+
+```bash
+pgsi-analyzer benchmark init-template --output ./my-benchmarks --algorithms hanoi
+```
+
+Create a single custom benchmark and auto-register it:
+
+```bash
+pgsi-analyzer create benchmark --name A1 --benchmarks-dir ./my-benchmarks
+```
+
+This creates `./my-benchmarks/A1/...` and updates `./my-benchmarks/pgsi_registry.json`.
+
+Tip: when running from a project that has `./benchmarks/pgsi_registry.json`,
+`benchmark list` and `benchmark run` auto-detect `./benchmarks` even if
+`--benchmarks-dir` is omitted.
+
+3. Implement your algorithm workload by editing generated files under:
+   `<benchmarks_dir>/<algorithm>/<method>/main.py`
+4. Keep the PGSI decorators on your benchmark functions:
+   - `@measure_energy_to_csv(n=get_measurement_runs("<algorithm>"), csv_filename="<algorithm>_<method>")`
+   - `@measure_time_to_csv(n=get_measurement_runs("<algorithm>"), csv_filename="<algorithm>_<method>")`
+5. Run/list with `--benchmarks-dir <benchmarks_dir>` to include your custom benchmarks
+
+The included KNN CPython benchmark is a concrete decorator example:
+- `src/pgsi_analyzer/benchmarks/knn/cpython/main.py`
+
+List algorithms including your custom folder:
+
+```bash
+pgsi-analyzer benchmark list --algorithms --benchmarks-dir ./my-benchmarks
+```
+
+Run your custom algorithm:
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms my-algo \
+  --methods cpython \
+  --benchmarks-dir ./my-benchmarks
+```
+
+Generate a full template first (recommended):
+
+```bash
+pgsi-analyzer benchmark init-template --output ./my-benchmarks --algorithms all
+```
+
+This scaffolds the benchmark tree with commented starter files (including `cython`/`ctypes` support files), so end developers can implement directly in their own project folder.
+
+Quick help:
+
+```bash
+pgsi-analyzer benchmark init-template --help
+```
+
+Example generated tree (trimmed):
+
+```text
+my-benchmarks/
+├── README.md
+├── hanoi/
+│   ├── cpython/main.py
+│   ├── pypy/main.py
+│   ├── py_compile/main.py
+│   ├── cython/
+│   │   ├── main.py
+│   │   ├── raw.pyx
+│   │   └── setup.py
+│   └── ctypes/
+│       ├── main.py
+│       └── raw.c
+└── knn/
+    └── ...
+```
+
 ### Full Pipeline
 
 The tool orchestrates a complete measurement and analysis pipeline:
@@ -55,8 +154,11 @@ The tool orchestrates a complete measurement and analysis pipeline:
 
 - `pgsi-analyzer benchmark list`: Lists available algorithms and methods
 - `pgsi-analyzer benchmark run`: Executes benchmarks and generates results
+- `pgsi-analyzer benchmark init-template`: Generates a Django-style user benchmark scaffold
+- `pgsi-analyzer startproject <name>`: Django-like one-command project scaffold
+- `pgsi-analyzer create benchmark --name <name>`: Creates one benchmark scaffold and registers it
 - Supports flexible algorithm/method selection (`all` or specific names)
-- Configurable run counts, output directories, and GreenScore weights
+- Configurable global runs, per-algorithm run overrides, output directories, and GreenScore weights
 
 ### Configuration
 
@@ -82,10 +184,11 @@ Install from PyPI (or install from source):
 pip install pgsi-analyzer
 ```
 
-This automatically installs Python dependencies including:
+This automatically installs core Python dependencies including:
 - `cython>=3.0.0` (for Cython benchmark compilation)
 - `python-dotenv>=1.0.0` (for `.env` file support)
 - `pandas`, `matplotlib`, `numpy`, `psutil` (core analysis libraries)
+- `codecarbon` (default cross-platform energy fallback)
 
 ### System Prerequisites
 
@@ -112,8 +215,30 @@ This automatically installs Python dependencies including:
 **Platform Limitations:**
 
 - **Hardware energy counters** (pyRAPL) are only available on **Linux x86_64**
-- On Windows and macOS, energy is estimated from CPU time (still accurate for CPU-bound workloads)
+- When `pyRAPL` is unavailable, PGSI tries this fallback chain in order:
+  - `codecarbon`-based tracking (works on macOS, Windows, Linux, including ARM devices such as Raspberry Pi)
+  - CPU-time/TDP estimation fallback (always available)
+- On macOS, Windows, Linux ARM, and Raspberry Pi, this provides an OS-independent energy path even without RAPL counters
 - All platforms support time measurement and carbon footprint calculation
+
+### Energy Measurement Fallback Chain
+
+PGSI uses a deterministic fallback chain so energy collection works across desktop and edge platforms:
+
+1. **`pyRAPL`** (preferred): used only when running on **Linux x86_64** with Intel RAPL access.
+2. **`codecarbon`**: used when `pyRAPL` is not available (for example on **macOS**, **Windows**, **Linux ARM**, and **Raspberry Pi**).
+3. **CPU-time/TDP model**: final fallback when `codecarbon` cannot return usable energy data.
+
+### Methodology Provenance Tags
+
+Each energy row now includes auditable methodology tags:
+
+- `hardware_rapl_linux`: direct pyRAPL hardware counters.
+- `estimated_codecarbon`: CodeCarbon tracker returned energy.
+- `dataset_tdp`: dataset-backed CPU power resolution from packaged `cpu_power.csv`.
+- `generic_tdp`: last-resort generic fallback when no dataset match is found.
+
+This means benchmark runs can continue on macOS, Windows, Linux, and Raspberry Pi without failing due to missing hardware counters.
 
 ## Quick Start: Basic Usage
 
@@ -166,6 +291,50 @@ pgsi-analyzer benchmark run \
 - Aggregated CSVs per method
 - Combined results across all methods
 - Final `GreenScore.csv` with sustainability rankings
+
+### Launch the GUI (Easy setup + run)
+
+You can launch a desktop GUI to configure paths, select algorithms/methods, set run options, and start PGSI without typing full CLI commands.
+
+```bash
+pgsi-analyzer-gui
+```
+
+The GUI provides:
+- Step 1 project setup page (create a new benchmark project or load an existing one)
+- Step 2 run page with benchmark/method selection and run configuration
+- Setup field for `.env` path
+- Per-algorithm run override dialog (set different run counts per selected algorithm)
+- Live run log with progress bar updates from `[x/y]` execution progress
+- Final GreenScore ranking popup (pyramid view) when a run completes successfully
+- One-click output folder access
+
+### GUI Quick Workflow (Screenshot)
+
+Use this screen as the standard first-run workflow:
+
+1. Set the `.env` path in **Setup: Tool Paths**
+2. Configure output + run settings in **Run Configuration**
+3. Choose algorithms/methods in **Benchmarks Selection**
+4. Click **Run PGSI Analysis** and monitor **Run Log**
+
+![PGSI GUI dark theme run configuration](docs/images/gui-dark-run-config.png)
+
+> If the image does not render yet, place your screenshot at `docs/images/gui-dark-run-config.png`.
+
+### Per-Algorithm Run Overrides (CLI)
+
+You can override the global `--runs` value for specific algorithms:
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms hanoi sieve \
+  --methods cpython \
+  --runs 50 \
+  --algorithm-runs hanoi=20 sieve=10
+```
+
+In this example, `hanoi` runs 20 times, `sieve` runs 10 times, and any algorithm not listed in `--algorithm-runs` uses the global `--runs` value.
 
 ### Custom GreenScore Weights
 
@@ -270,7 +439,7 @@ This tool was developed as part of the research study: **"Python Under the Micro
 - **15 diverse CPU-bound algorithms** (10 from Computer Language Benchmarks Game + 5 supplementary)
 - **5 execution methods** with identical algorithm implementations
 - **50 runs per combination** for statistical significance
-- **Hardware energy measurement** on Linux x86_64 (Intel RAPL) or time-based estimation elsewhere
+- **Hardware-first, cross-platform energy measurement**: `pyRAPL` on Linux x86_64, then `codecarbon`, then CPU-time/TDP fallback
 
 ## Citation
 

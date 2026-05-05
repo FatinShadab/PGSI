@@ -1,5 +1,7 @@
 import os
 import sys
+from pathlib import Path
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 import ctypes
@@ -9,8 +11,12 @@ import argparse
 from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
 
-# Load the shared library
-lib = ctypes.CDLL("./libhanoi.so")
+# Load the shared library (names must match benchmark/builder.py build_ctypes)
+_bench_dir = Path(__file__).resolve().parent
+_c_files = sorted(_bench_dir.glob("*.c"))
+_stem = _c_files[0].stem if _c_files else "hanoi"
+_lib_path = _bench_dir / (f"{_stem}.dll" if os.name == "nt" else f"lib{_stem}.so")
+lib = ctypes.CDLL(str(_lib_path))
 
 # Declare the argument types for the C function
 lib.towers_of_hanoi.argtypes = [c_int, c_char_p, c_char_p, c_char_p]

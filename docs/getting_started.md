@@ -17,15 +17,19 @@ PGSI Analyzer implements a complete benchmark execution and analysis pipeline:
 
 ### CLI Surface
 
-The tool provides two main commands:
+The tool provides project scaffolding plus benchmark execution commands:
 
-- **`pgsi-analyzer benchmark list`**: Lists all available algorithms and execution methods
+- **`pgsi-analyzer`**: Bootstraps `./benchmarks` on first run (when no command is provided)
+- **`pgsi-analyzer startproject <name> --algorithms ...`**: Creates a user benchmark project scaffold
+- **`pgsi-analyzer create benchmark --name <name> --benchmarks-dir <dir>`**: Adds one benchmark scaffold and updates `pgsi_registry.json`
+- **`pgsi-analyzer benchmark list`**: Lists available algorithms and execution methods
 - **`pgsi-analyzer benchmark run`**: Executes benchmarks with configurable options:
   - `--algorithms`: Select specific algorithms or use `all`
   - `--methods`: Select specific methods or use `all`
   - `--runs`: Number of runs per benchmark (default: 50)
   - `--output`: Output directory (default: `results/`)
   - `--alpha`, `--beta`, `--gamma`: GreenScore weight configuration
+  - `--benchmarks-dir`: Include user benchmark projects
   - `--env-file`, `--python-path`, `--pypy-path`, `--cc-path`: Tool path configuration
 
 ### Known Limitations and Warnings
@@ -94,17 +98,20 @@ source .venv/bin/activate
 ### Step 3: Install PGSI Analyzer
 
 ```bash
-# Install from PyPI
+# Install from PyPI (includes CodeCarbon by default)
 pip install pgsi-analyzer
+
+# Recommended production benchmarking profile
+pip install "pgsi-analyzer[energy,analysis]"
 
 # Or install from source (if cloning repository)
 pip install -e .
 ```
 
-This installs all Python dependencies including:
+This installs core Python dependencies including:
 - `cython>=3.0.0`
 - `python-dotenv>=1.0.0`
-- `pandas`, `matplotlib`, `numpy`, `psutil`
+- `pandas`, `matplotlib`, `numpy`, `psutil`, `codecarbon`
 
 ### Step 4: (Optional) Create `.env` File
 
@@ -126,6 +133,9 @@ PGSI_CC_PATH=C:\Program Files\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw6
 ### Step 5: Verify Installation
 
 ```bash
+# Optional: bootstrap default local project scaffold
+pgsi-analyzer
+
 # List available benchmarks
 pgsi-analyzer benchmark list
 ```
@@ -373,12 +383,12 @@ Phase 2: Executing benchmarks...
 
 **Explanation**:
 - Hardware energy counters (pyRAPL) are **only available on Linux x86_64** with Intel processors
-- On Windows and macOS, energy is **estimated from CPU time** (still accurate for CPU-bound workloads)
-- This is expected behavior and does not affect benchmark validity
+- Non-RAPL fallback order is deterministic: `codecarbon` -> dataset-backed `cpu_power.csv` TDP -> generic TDP
+- This is expected behavior; CSV rows include methodology/provenance fields for auditability
 
 **What to expect**:
-- Linux x86_64: Hardware-based energy measurement
-- Other platforms: Time-based energy estimation with a warning message
+- Linux x86_64: `hardware_rapl_linux` when RAPL is available
+- Other platforms: `estimated_codecarbon`, else `dataset_tdp`, else `generic_tdp`
 
 **Note**: All platforms still produce valid time measurements and carbon footprint calculations.
 

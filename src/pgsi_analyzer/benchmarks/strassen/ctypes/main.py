@@ -1,5 +1,7 @@
 import os
 import sys
+from pathlib import Path
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 import ctypes
@@ -11,8 +13,12 @@ from pgsi_analyzer.measurement import measure_energy_to_csv, measure_time_to_csv
 
 from typing import List
 
-# Load the shared library
-lib = ctypes.CDLL("./libstrassen.so")  # or "strassen.dll" on Windows
+# Load the shared library (names must match benchmark/builder.py build_ctypes)
+_bench_dir = Path(__file__).resolve().parent
+_c_files = sorted(_bench_dir.glob("*.c"))
+_stem = _c_files[0].stem if _c_files else "strassen"
+_lib_path = _bench_dir / (f"{_stem}.dll" if os.name == "nt" else f"lib{_stem}.so")
+lib = ctypes.CDLL(str(_lib_path))
 
 # Define the function signature
 lib.strassen.argtypes = [

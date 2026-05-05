@@ -6,12 +6,12 @@ where Intel RAPL hardware counters are not available. Estimation is based on
 CPU time, TDP (Thermal Design Power), and utilization models.
 """
 
-import time
 from typing import Dict, Any, Tuple, Optional
 
 # Methodology tags for data source labeling (audit)
-METHODOLOGY_ESTIMATED_CPU_TDP = "estimated_cpu_tdp"
-METHODOLOGY_ESTIMATED_FALLBACK_GENERIC = "estimated_fallback_generic"
+METHODOLOGY_DATASET_TDP = "dataset_tdp"
+METHODOLOGY_GENERIC_TDP = "generic_tdp"
+METHODOLOGY_ESTIMATED_CODECARBON = "estimated_codecarbon"
 
 try:
     import psutil
@@ -19,51 +19,11 @@ except Exception:
     psutil = None  # Optional: e.g. PyPy may fail to load psutil's C extension
 
 from ..platform.hardware import get_cpu_info
-from ..platform.detection import is_windows, is_macos, detect_platform
+from ..platform.detection import is_windows, is_macos
+from .cpu_power_resolver import resolve_cpu_power, DEFAULT_TDP_WATTS
 
 
-# CPU TDP (Thermal Design Power) lookup table in Watts
-# Common CPU models and their typical TDP values
-CPU_TDP_LOOKUP: Dict[str, float] = {
-    # Intel Desktop CPUs
-    "intel core i3": 65.0,
-    "intel core i5": 65.0,
-    "intel core i7": 65.0,
-    "intel core i9": 95.0,
-    "intel xeon": 95.0,
-    
-    # Intel Mobile CPUs
-    "intel core i3 u": 15.0,
-    "intel core i5 u": 15.0,
-    "intel core i7 u": 15.0,
-    "intel core i5 h": 45.0,
-    "intel core i7 h": 45.0,
-    
-    # AMD Desktop CPUs
-    "amd ryzen 3": 65.0,
-    "amd ryzen 5": 65.0,
-    "amd ryzen 7": 65.0,
-    "amd ryzen 9": 105.0,
-    
-    # AMD Mobile CPUs
-    "amd ryzen 3 u": 15.0,
-    "amd ryzen 5 u": 15.0,
-    "amd ryzen 7 u": 15.0,
-    
-    # Apple Silicon (M-series)
-    "apple m1": 20.0,
-    "apple m1 pro": 30.0,
-    "apple m1 max": 40.0,
-    "apple m2": 20.0,
-    "apple m2 pro": 30.0,
-    "apple m2 max": 40.0,
-    "apple m3": 20.0,
-    "apple m3 pro": 30.0,
-    "apple m3 max": 40.0,
-    
-    # Default fallback
-    "default": 65.0,  # Typical desktop CPU TDP
-}
+CPU_TDP_LOOKUP: Dict[str, float] = {"default": DEFAULT_TDP_WATTS}
 
 
 def get_cpu_tdp(cpu_model: str) -> float:
@@ -84,19 +44,23 @@ def get_cpu_tdp(cpu_model: str) -> float:
         >>> get_cpu_tdp("Unknown CPU")
         65.0  # Default
     """
-    cpu_lower = cpu_model.lower()
-    
-    # Try exact match first
-    if cpu_lower in CPU_TDP_LOOKUP:
-        return CPU_TDP_LOOKUP[cpu_lower]
-    
-    # Try partial matches
-    for key, tdp in CPU_TDP_LOOKUP.items():
-        if key in cpu_lower or cpu_lower in key:
-            return tdp
-    
-    # Default fallback
-    return CPU_TDP_LOOKUP["default"]
+    return resolve_cpu_power(cpu_model).tdp_watts
+
+
+def resolve_cpu_power_provenance(cpu_model: str) -> Dict[str, str]:
+    """Return audit metadata for CPU power resolution."""
+    resolution = resolve_cpu_power(cpu_model)
+    methodology = (
+        METHODOLOGY_DATASET_TDP
+        if resolution.source == "codecarbon_cpu_power_csv"
+        else METHODOLOGY_GENERIC_TDP
+    )
+    return {
+        "methodology": methodology,
+        "match_type": resolution.match_type,
+        "matched_model": resolution.matched_model,
+        "source": resolution.source,
+    }
 
 
 def estimate_energy_cpu_time(
@@ -128,6 +92,7 @@ def estimate_energy_cpu_time(
         cpu_info = get_cpu_info()
     
     processor = cpu_info.get("processor", "Unknown")
+    provenance = resolve_cpu_power_provenance(processor)
     tdp_watts = get_cpu_tdp(processor)
     
     # Handle edge case: very fast functions might have 0 CPU time
@@ -149,13 +114,11 @@ def estimate_energy_cpu_time(
     # Convert to microjoules (μJ)
     energy_microjoules = energy_joules * 1e6
     
-    model_name = f"TDP-based (TDP={tdp_watts}W, util={utilization:.0%})"
-    # Use fallback tag when we have no real CPU model (Unknown + default TDP)
-    methodology = (
-        METHODOLOGY_ESTIMATED_FALLBACK_GENERIC
-        if (processor == "Unknown" and tdp_watts == CPU_TDP_LOOKUP["default"])
-        else METHODOLOGY_ESTIMATED_CPU_TDP
+    model_name = (
+        f"TDP-based (TDP={tdp_watts}W, util={utilization:.0%}, "
+        f"match={provenance['match_type']}, source={provenance['source']})"
     )
+    methodology = provenance["methodology"]
     return energy_microjoules, model_name, methodology
 
 
@@ -192,6 +155,7 @@ def estimate_energy_from_psutil(
         cpu_info = get_cpu_info()
     
     processor = cpu_info.get("processor", "Unknown")
+    provenance = resolve_cpu_power_provenance(processor)
     tdp_watts = get_cpu_tdp(processor)
     
     # Get CPU utilization during the measurement period
@@ -218,8 +182,11 @@ def estimate_energy_from_psutil(
     # Convert to microjoules (μJ)
     energy_microjoules = energy_joules * 1e6
     
-    model_name = f"psutil-based (TDP={tdp_watts}W, util={cpu_utilization:.0%})"
-    return energy_microjoules, model_name, METHODOLOGY_ESTIMATED_CPU_TDP
+    model_name = (
+        f"psutil-based (TDP={tdp_watts}W, util={cpu_utilization:.0%}, "
+        f"match={provenance['match_type']}, source={provenance['source']})"
+    )
+    return energy_microjoules, model_name, provenance["methodology"]
 
 
 def estimate_windows(
@@ -293,11 +260,9 @@ def estimate_energy(
         >>> energy, model, methodology = estimate_energy(1.0)
         >>> energy > 0
         True
-        >>> methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
+        >>> methodology in ("dataset_tdp", "generic_tdp")
         True
     """
-    platform = detect_platform()
-    
     if is_windows():
         return estimate_windows(cpu_time_seconds, cpu_info)
     elif is_macos():
@@ -305,4 +270,46 @@ def estimate_energy(
     else:
         # Fallback to CPU time-based estimation
         return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
+
+
+def estimate_energy_from_codecarbon(
+    cpu_time_seconds: float,
+    tracker: Optional[Any] = None,
+    emissions_kg: Optional[float] = None,
+    cpu_info: Optional[Dict[str, Any]] = None,
+) -> Tuple[float, str, str]:
+    """
+    Estimate energy using CodeCarbon tracker output when available.
+
+    If tracker metadata is insufficient to recover energy directly, this falls
+    back to the CPU-TDP model to keep behavior deterministic across platforms.
+    """
+    energy_kwh = None
+    model_name = "CodeCarbon-based"
+
+    if tracker is not None:
+        final_data = getattr(tracker, "final_emissions_data", None)
+        if final_data is not None:
+            energy_kwh = getattr(final_data, "energy_consumed", None)
+            country = getattr(final_data, "country_name", None)
+            if country:
+                model_name = f"CodeCarbon-based ({country})"
+
+        if energy_kwh is None:
+            total_energy = getattr(tracker, "_total_energy", None)
+            if total_energy is not None:
+                if isinstance(total_energy, (int, float)):
+                    energy_kwh = float(total_energy)
+                else:
+                    energy_kwh = getattr(total_energy, "kWh", None)
+
+    if isinstance(energy_kwh, (int, float)) and energy_kwh > 0:
+        return (
+            float(energy_kwh) * 3.6e12,  # 1 kWh = 3.6e6 J = 3.6e12 uJ
+            model_name,
+            METHODOLOGY_ESTIMATED_CODECARBON,
+        )
+
+    # Fall back to deterministic CPU-time/TDP estimation.
+    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
 
