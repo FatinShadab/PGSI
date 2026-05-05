@@ -1,16 +1,4 @@
 include README.md LICENSE
-graft src
-prune tests
-prune docs
-prune examples
-prune audit
-prune __audit
-prune dev
-prune energy_benchmark
-prune time_benchmark
-prune .pytest_cache
-prune data
-prune test_result
 global-exclude *.py[cod]
 global-exclude __pycache__
 

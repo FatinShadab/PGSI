@@ -5,6 +5,9 @@ __pycache__/
 
 **/energy_benchmark/
 **/time_benchmark/
+src/pgsi_analyzer/benchmarks/**/build/
+src/pgsi_analyzer/benchmarks/**/*.csv
+src/pgsi_analyzer/benchmarks/**/system_info*.json
 
 # C extensions
 *.so

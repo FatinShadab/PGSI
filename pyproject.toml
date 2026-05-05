@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "A comprehensive benchmarking and analysis tool for comparing energy consumption, execution time, and carbon footprint of Python execution methods using GreenScore metric"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Md Fatin Shadab Turja"},
 ]
@@ -38,7 +38,6 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Benchmark",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
