@@ -7,6 +7,8 @@ then runs the existing PGSI orchestration pipeline in the background.
 
 import os
 import queue
+import re
+import csv
 import subprocess
 import sys
 import threading
@@ -17,8 +19,9 @@ from typing import Dict, List, Optional, Set
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from ..benchmarks.registry import list_algorithms, list_methods
-from ..config import load_tool_paths
+from ..benchmarks.registry import list_algorithms as list_builtin_algorithms, list_methods
+from ..benchmarks.discovery import build_registry, list_algorithms_from_registry
+from ..benchmarks.template import generate_benchmark_template
 
 
 class PGSIGuiApp:
@@ -34,8 +37,10 @@ class PGSIGuiApp:
         self._run_thread: Optional[threading.Thread] = None
         self._process: Optional[subprocess.Popen] = None
         self._is_running = False
+        self._progress_current = 0
+        self._progress_total = 0
 
-        self.algorithms = list_algorithms()
+        self.algorithms = list_builtin_algorithms()
         self.methods = list_methods()
         self.algorithm_vars: Dict[str, tk.BooleanVar] = {}
         self.method_vars: Dict[str, tk.BooleanVar] = {}
@@ -43,6 +48,11 @@ class PGSIGuiApp:
         self._algo_canvas: Optional[tk.Canvas] = None
         self._algo_columns = 3
         self.algorithm_runs_overrides: Dict[str, int] = {}
+        self.load_project_dir_var = tk.StringVar(value=str((Path.cwd() / "benchmarks").resolve()))
+        self.create_parent_dir_var = tk.StringVar(value=str(Path.cwd().resolve()))
+        self.create_project_name_var = tk.StringVar(value="my-benchmarks")
+        self.create_algorithm_vars: Dict[str, tk.BooleanVar] = {}
+        self.current_project_dir: Optional[Path] = None
 
         self._apply_theme()
         self._build_ui()
@@ -142,6 +152,14 @@ class PGSIGuiApp:
             arrowcolor=text_muted,
             bordercolor=border,
         )
+        style.configure(
+            "Green.Horizontal.TProgressbar",
+            troughcolor="#111723",
+            background=accent,
+            bordercolor=border,
+            lightcolor=accent_hover,
+            darkcolor="#3F9F43",
+        )
 
     def _build_ui(self) -> None:
         outer = ttk.Frame(self.root, style="Card.TFrame", padding=14)
@@ -154,11 +172,104 @@ class PGSIGuiApp:
         )
         header.pack(anchor=tk.W, pady=(0, 8))
 
-        content = ttk.Frame(outer, style="Card.TFrame")
+        self.page_container = ttk.Frame(outer, style="Card.TFrame")
+        self.page_container.pack(fill=tk.BOTH, expand=True)
+        self.page_container.columnconfigure(0, weight=1)
+        self.page_container.rowconfigure(0, weight=1)
+
+        self.project_page = ttk.Frame(self.page_container, style="Card.TFrame")
+        self.project_page.grid(row=0, column=0, sticky="nsew")
+        self._build_project_page(self.project_page)
+
+        self.run_page = ttk.Frame(self.page_container, style="Card.TFrame")
+        self.run_page.grid(row=0, column=0, sticky="nsew")
+        self._build_run_page(self.run_page)
+
+        self.project_page.tkraise()
+
+    def _build_project_page(self, parent: ttk.Frame) -> None:
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(0, weight=1)
+        frame = ttk.LabelFrame(parent, text="Step 1: Load or Create Project", style="Section.TLabelframe", padding=14)
+        frame.grid(row=0, column=0, sticky="nsew")
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
+        frame.rowconfigure(2, weight=1)
+
+        ttk.Label(
+            frame,
+            text="Choose a benchmark project folder, or create one in-place.\n"
+                 "Then continue to configuration and run.",
+        ).grid(row=0, column=0, sticky="w", pady=(0, 10))
+
+        create_frame = ttk.LabelFrame(frame, text="Create Project", style="Section.TLabelframe", padding=10)
+        create_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
+        create_frame.columnconfigure(0, weight=0)
+        create_frame.columnconfigure(1, weight=1)
+        create_frame.columnconfigure(2, weight=0)
+        create_frame.rowconfigure(3, weight=1)
+
+        ttk.Label(create_frame, text="Parent folder").grid(row=0, column=0, sticky="w", pady=3)
+        ttk.Entry(create_frame, textvariable=self.create_parent_dir_var).grid(row=0, column=1, sticky="ew", pady=3)
+        ttk.Button(
+            create_frame,
+            text="Browse",
+            command=lambda: self._set_var_from_dir(self.create_parent_dir_var),
+        ).grid(row=0, column=2, padx=(6, 0), pady=3)
+
+        ttk.Label(create_frame, text="Project name").grid(row=1, column=0, sticky="w", pady=3)
+        ttk.Entry(create_frame, textvariable=self.create_project_name_var).grid(
+            row=1, column=1, columnspan=2, sticky="ew", pady=3
+        )
+
+        ttk.Label(create_frame, text="Algorithms to include").grid(row=2, column=0, columnspan=3, sticky="w", pady=(8, 4))
+        algo_canvas, algo_inner = self._make_scrollable_checks(create_frame, 3, 0)
+        algo_canvas.grid_configure(columnspan=3, padx=(0, 0), pady=(0, 6))
+        for name in list_builtin_algorithms():
+            var = tk.BooleanVar(value=True)
+            self.create_algorithm_vars[name] = var
+            ttk.Checkbutton(algo_inner, text=name, variable=var).pack(anchor=tk.W, pady=1)
+
+        create_btns = ttk.Frame(create_frame)
+        create_btns.grid(row=4, column=0, columnspan=3, sticky="ew")
+        ttk.Button(
+            create_btns,
+            text="All",
+            command=lambda: self._toggle_group(self.create_algorithm_vars, True),
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            create_btns,
+            text="None",
+            command=lambda: self._toggle_group(self.create_algorithm_vars, False),
+        ).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(create_btns, text="Create Project", command=self._create_project_from_gui).pack(side=tk.RIGHT)
+
+        load_frame = ttk.LabelFrame(frame, text="Load Existing Project", style="Section.TLabelframe", padding=10)
+        load_frame.grid(row=2, column=0, sticky="nsew")
+        load_frame.columnconfigure(0, weight=0)
+        load_frame.columnconfigure(1, weight=1)
+        load_frame.columnconfigure(2, weight=0)
+        load_frame.columnconfigure(3, weight=0)
+        ttk.Label(load_frame, text="Project folder").grid(row=0, column=0, sticky="w", pady=3)
+        ttk.Entry(load_frame, textvariable=self.load_project_dir_var).grid(row=0, column=1, sticky="ew", pady=3)
+        ttk.Button(
+            load_frame,
+            text="Browse",
+            command=lambda: self._set_var_from_dir(self.load_project_dir_var),
+        ).grid(row=0, column=2, padx=(6, 0), pady=3)
+        ttk.Button(load_frame, text="Load Project", command=self._load_project_from_gui).grid(
+            row=0, column=3, padx=(6, 0), pady=3, sticky="e"
+        )
+
+        bottom = ttk.Frame(parent, style="Card.TFrame")
+        bottom.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        ttk.Button(bottom, text="Continue ->", style="Run.TButton", command=self._continue_to_run_page).pack(side=tk.RIGHT)
+
+    def _build_run_page(self, parent: ttk.Frame) -> None:
+        content = ttk.Frame(parent, style="Card.TFrame")
         content.pack(fill=tk.BOTH, expand=True)
         content.columnconfigure(0, weight=1)
         content.columnconfigure(1, weight=1)
-        # Keep all main sections responsive to window resizing.
         content.rowconfigure(0, weight=1)
         content.rowconfigure(1, weight=3)
         content.rowconfigure(2, weight=2)
@@ -239,7 +350,6 @@ class PGSIGuiApp:
             side=tk.RIGHT, padx=(6, 0)
         )
         ttk.Button(algorithm_top, text="All", command=lambda: self._toggle_group(self.algorithm_vars, True)).pack(side=tk.RIGHT)
-        ttk.Button(algorithm_top, text="None", command=lambda: self._toggle_group(self.algorithm_vars, False)).pack(side=tk.RIGHT, padx=(0, 4))
 
         method_top = ttk.Frame(frame)
         method_top.grid(row=0, column=1, sticky="ew")
@@ -288,21 +398,37 @@ class PGSIGuiApp:
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.log_text.configure(yscrollcommand=scrollbar.set)
 
-        footer = ttk.Frame(frame)
-        footer.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10, 0))
-        footer.columnconfigure(0, weight=1)
+        self.progress_var = tk.DoubleVar(value=0.0)
+        self.progress_label_var = tk.StringVar(value="Progress: idle")
+        self.progress_bar = ttk.Progressbar(
+            frame,
+            orient=tk.HORIZONTAL,
+            mode="determinate",
+            maximum=100,
+            variable=self.progress_var,
+            style="Green.Horizontal.TProgressbar",
+        )
+        self.progress_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        ttk.Label(frame, textvariable=self.progress_label_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
 
-        self.status_var = tk.StringVar(value="Ready.")
-        ttk.Label(footer, textvariable=self.status_var).grid(row=0, column=0, sticky=tk.W)
+        footer = ttk.Frame(frame)
+        footer.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        footer.columnconfigure(2, weight=1)
+
+        self.status_var = tk.StringVar(value="Ready. (Step 2)")
+        ttk.Button(footer, text="<- Back", command=lambda: self.project_page.tkraise()).grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Label(footer, textvariable=self.status_var).grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
 
         self.open_results_button = ttk.Button(footer, text="Open Output Folder", command=self._open_output_folder)
-        self.open_results_button.grid(row=0, column=1, sticky="e", padx=(10, 0))
+        self.open_results_button.grid(row=0, column=3, sticky="e", padx=(10, 0))
 
         self.stop_button = ttk.Button(footer, text="Stop", command=self._on_stop, state=tk.DISABLED)
-        self.stop_button.grid(row=0, column=2, sticky="e", padx=(10, 0))
+        self.stop_button.grid(row=0, column=4, sticky="e", padx=(10, 0))
 
         self.run_button = ttk.Button(footer, text="Run PGSI Analysis", style="Run.TButton", command=self._on_run)
-        self.run_button.grid(row=0, column=3, sticky="e", padx=(10, 0))
+        self.run_button.grid(row=0, column=5, sticky="e", padx=(10, 0))
 
     def _make_scrollable_checks(self, parent: ttk.Frame, row: int, col: int):
         outer = ttk.Frame(parent)
@@ -476,6 +602,8 @@ class PGSIGuiApp:
         env_dir = os.environ.get("PGSI_ANALYZER_BENCHMARKS_DIR")
         if env_dir:
             candidates.append(Path(env_dir))
+        if self.current_project_dir:
+            candidates.append(self.current_project_dir)
         candidates.append(Path.cwd() / "benchmarks")
         candidates.append(Path.cwd() / "src" / "pgsi_analyzer" / "benchmarks")
 
@@ -573,6 +701,11 @@ class PGSIGuiApp:
         env_file = Path(env_file_text) if env_file_text else None
 
         self._is_running = True
+        self._progress_current = 0
+        self._progress_total = 0
+        self.progress_var.set(0.0)
+        self.progress_bar.configure(maximum=100)
+        self.progress_label_var.set("Progress: starting...")
         self.run_button.configure(state=tk.DISABLED)
         self.stop_button.configure(state=tk.NORMAL)
         self.status_var.set("Running benchmark suite...")
@@ -590,6 +723,7 @@ class PGSIGuiApp:
             gamma=gamma,
             env_file=env_file,
             algorithm_runs=self.algorithm_runs_overrides,
+            benchmarks_dir=self.current_project_dir,
         )
         self._run_thread = threading.Thread(target=self._run_pipeline_worker, args=(args,), daemon=True)
         self._run_thread.start()
@@ -606,6 +740,7 @@ class PGSIGuiApp:
         gamma: float,
         env_file: Optional[Path],
         algorithm_runs: Dict[str, int],
+        benchmarks_dir: Optional[Path],
     ) -> List[str]:
         cmd = [
             sys.executable,
@@ -636,7 +771,76 @@ class PGSIGuiApp:
             cmd.append("--algorithm-runs")
             for algorithm, run_count in sorted(algorithm_runs.items()):
                 cmd.append(f"{algorithm}={run_count}")
+        if benchmarks_dir:
+            cmd.extend(["--benchmarks-dir", str(benchmarks_dir)])
         return cmd
+
+    def _refresh_algorithms_from_project(self) -> None:
+        if self.current_project_dir is None:
+            return
+        registry = build_registry(self.current_project_dir)
+        self.algorithms = list_algorithms_from_registry(registry)
+        self._render_algorithm_checkboxes()
+
+    def _is_pgsi_project_dir(self, path: Path) -> bool:
+        if not path.exists() or not path.is_dir():
+            return False
+        valid_methods = set(self.methods)
+        for algo_dir in path.iterdir():
+            if not algo_dir.is_dir():
+                continue
+            for method_dir in algo_dir.iterdir():
+                if method_dir.is_dir() and method_dir.name in valid_methods and (method_dir / "main.py").exists():
+                    return True
+        return False
+
+    def _load_project_from_gui(self) -> None:
+        path = Path(self.load_project_dir_var.get().strip()).expanduser()
+        if not path.exists() or not path.is_dir():
+            messagebox.showerror("Load Project", f"Project folder not found:\n{path}")
+            return
+        if not self._is_pgsi_project_dir(path):
+            messagebox.showerror(
+                "Load Project",
+                f"Folder is not a valid pgsi-analyzer project:\n{path}\n\n"
+                "Expected at least one benchmark folder with <algorithm>/<method>/main.py",
+            )
+            return
+        self.current_project_dir = path.resolve()
+        self._refresh_algorithms_from_project()
+        self._enqueue_log(f"Loaded project: {self.current_project_dir}")
+        messagebox.showinfo("Load Project", f"Project loaded:\n{self.current_project_dir}")
+
+    def _create_project_from_gui(self) -> None:
+        parent_dir = Path(self.create_parent_dir_var.get().strip()).expanduser()
+        project_name = self.create_project_name_var.get().strip()
+        if not project_name:
+            messagebox.showerror("Create Project", "Project name is required.")
+            return
+        selected_algorithms = [name for name, var in self.create_algorithm_vars.items() if var.get()]
+        if not selected_algorithms:
+            messagebox.showerror("Create Project", "Select at least one algorithm.")
+            return
+        path = parent_dir / project_name
+        try:
+            generate_benchmark_template(path, algorithms=selected_algorithms, force=False)
+        except Exception as exc:
+            messagebox.showerror("Create Project", f"Failed to create project:\n{exc}")
+            return
+        self.current_project_dir = path.resolve()
+        self._refresh_algorithms_from_project()
+        self._enqueue_log(f"Created project: {self.current_project_dir}")
+        messagebox.showinfo("Create Project", f"Project created:\n{self.current_project_dir}")
+
+    def _continue_to_run_page(self) -> None:
+        if self.current_project_dir is None:
+            messagebox.showinfo(
+                "Project Required",
+                "Load an existing project or create one before continuing.",
+            )
+            return
+        self.status_var.set(f"Ready. Project: {self.current_project_dir}")
+        self.run_page.tkraise()
 
     def _run_pipeline_worker(self, cmd: List[str]) -> None:
         try:
@@ -662,7 +866,7 @@ class PGSIGuiApp:
             if return_code == 0:
                 self._enqueue_log("")
                 self._enqueue_log("Completed successfully.")
-                self.root.after(0, lambda: self.status_var.set("Completed successfully."))
+                self.root.after(0, self._on_run_success)
             else:
                 self._enqueue_log("")
                 self._enqueue_log(f"Run failed with exit code: {return_code}")
@@ -696,9 +900,175 @@ class PGSIGuiApp:
         self._is_running = False
         self.run_button.configure(state=tk.NORMAL)
         self.stop_button.configure(state=tk.DISABLED)
+        if self._progress_total > 0 and self._progress_current >= self._progress_total:
+            self.progress_label_var.set(f"Progress: {self._progress_total}/{self._progress_total} (complete)")
+        elif self._progress_total > 0:
+            self.progress_label_var.set(f"Progress: {self._progress_current}/{self._progress_total} (stopped)")
+        else:
+            self.progress_label_var.set("Progress: idle")
+
+    def _on_run_success(self) -> None:
+        """Update status and show GreenScore ranking popup after successful run."""
+        self.status_var.set("Completed successfully.")
+        self._show_greenscore_pyramid_popup()
+
+    def _get_greenscore_csv_path(self) -> Optional[Path]:
+        """Resolve the best candidate path for GreenScore CSV in output directory."""
+        output_dir = Path(self.output_dir_var.get().strip() or "results").expanduser().resolve()
+        direct = output_dir / "GreenScore.csv"
+        if direct.exists():
+            return direct
+        for pattern in ("*GreenScore*.csv", "*greenscore*.csv", "*.csv"):
+            for candidate in output_dir.glob(pattern):
+                if "greenscore" in candidate.name.lower():
+                    return candidate
+        return None
+
+    def _load_greenscore_ranking(self) -> List[tuple[str, float]]:
+        """Read GreenScore CSV and return (method, score) sorted ascending."""
+        csv_path = self._get_greenscore_csv_path()
+        if csv_path is None:
+            return []
+
+        ranking: List[tuple[str, float]] = []
+        with csv_path.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                method = (row.get("method") or "").strip()
+                score_text = (row.get("green_score") or row.get("greenscore") or "").strip()
+                if not method or not score_text:
+                    continue
+                try:
+                    score = float(score_text)
+                except ValueError:
+                    continue
+                ranking.append((method, score))
+        ranking.sort(key=lambda item: item[1])
+        return ranking
+
+    def _show_greenscore_pyramid_popup(self) -> None:
+        """Display final GreenScore ranking as a pyramid (best at top)."""
+        ranking = self._load_greenscore_ranking()
+        if not ranking:
+            messagebox.showinfo(
+                "GreenScore Ranking",
+                "Run completed, but no GreenScore.csv ranking data was found in the output directory.",
+            )
+            return
+
+        popup = tk.Toplevel(self.root)
+        popup.title("Final GreenScore Ranking (Pyramid)")
+        popup.geometry("620x520")
+        popup.transient(self.root)
+        popup.grab_set()
+
+        container = ttk.Frame(popup, padding=12)
+        container.pack(fill=tk.BOTH, expand=True)
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(1, weight=1)
+
+        ttk.Label(
+            container,
+            text="Most efficient at top (lowest GreenScore)",
+        ).grid(row=0, column=0, sticky="w", pady=(0, 8))
+
+        canvas = tk.Canvas(
+            container,
+            bg="#0F1623",
+            highlightthickness=1,
+            highlightbackground="#2A3345",
+        )
+        canvas.grid(row=1, column=0, sticky="nsew")
+
+        def _draw_pyramid(_event=None) -> None:
+            canvas.delete("all")
+            width = max(canvas.winfo_width(), 560)
+            height = max(canvas.winfo_height(), 360)
+            top_y = 28
+            bottom_y = height - 24
+            center_x = width // 2
+            half_base = int(width * 0.38)
+            levels = max(len(ranking), 1)
+            level_h = (bottom_y - top_y) / levels
+
+            # Pyramid silhouette.
+            canvas.create_polygon(
+                center_x,
+                top_y,
+                center_x - half_base,
+                bottom_y,
+                center_x + half_base,
+                bottom_y,
+                fill="#162236",
+                outline="#355173",
+                width=2,
+            )
+
+            # Tier colors: light at top (best), darker at bottom (least efficient).
+            tier_colors = ["#2E8B57", "#327D64", "#3A6F73", "#445F7C", "#4F4F7D", "#5D4A72"]
+            for idx, (method, score) in enumerate(ranking):
+                y0 = top_y + idx * level_h
+                y1 = y0 + level_h
+                # Linear width interpolation from apex to base.
+                ratio0 = (y0 - top_y) / (bottom_y - top_y) if bottom_y > top_y else 0.0
+                ratio1 = (y1 - top_y) / (bottom_y - top_y) if bottom_y > top_y else 0.0
+                half_w0 = max(6, half_base * ratio0)
+                half_w1 = max(8, half_base * ratio1)
+                color = tier_colors[min(idx, len(tier_colors) - 1)]
+
+                canvas.create_polygon(
+                    center_x - half_w0,
+                    y0,
+                    center_x + half_w0,
+                    y0,
+                    center_x + half_w1,
+                    y1,
+                    center_x - half_w1,
+                    y1,
+                    fill=color,
+                    outline="#1B2A3D",
+                    width=1,
+                )
+
+                label = f"{idx + 1}. {method}  ({score:.6f})"
+                canvas.create_text(
+                    center_x,
+                    (y0 + y1) / 2,
+                    text=label,
+                    fill="#E6EDF3",
+                    font=("Segoe UI Semibold", 10),
+                )
+
+            canvas.create_text(
+                center_x,
+                bottom_y + 14,
+                text="Least efficient (highest GreenScore)",
+                fill="#B8C4D6",
+                font=("Segoe UI", 9),
+            )
+
+        canvas.bind("<Configure>", _draw_pyramid)
+        popup.after(0, _draw_pyramid)
+
+        ttk.Button(container, text="Close", command=popup.destroy).grid(row=2, column=0, sticky="e", pady=(10, 0))
 
     def _enqueue_log(self, text: str) -> None:
         self._log_queue.put(text)
+
+    def _update_progress_from_log_line(self, line: str) -> None:
+        """Update progress widgets from orchestrator progress lines: [x/y]."""
+        match = re.search(r"\[(\d+)/(\d+)\]", line)
+        if not match:
+            return
+        current = int(match.group(1))
+        total = int(match.group(2))
+        if total <= 0:
+            return
+        self._progress_current = current
+        self._progress_total = total
+        self.progress_bar.configure(maximum=total)
+        self.progress_var.set(current)
+        self.progress_label_var.set(f"Progress: {current}/{total}")
 
     def _schedule_log_pump(self) -> None:
         self._flush_log_queue()
@@ -711,6 +1081,7 @@ class PGSIGuiApp:
                 line = self._log_queue.get_nowait()
             except queue.Empty:
                 break
+            self._update_progress_from_log_line(line)
             self.log_text.configure(state=tk.NORMAL)
             self.log_text.insert(tk.END, f"{line}\n")
             self.log_text.see(tk.END)

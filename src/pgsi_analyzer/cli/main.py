@@ -13,8 +13,9 @@ from typing import Dict, Optional
 from ..utils import PGSIAnalyzerError
 from ..benchmark import orchestrator
 from ..benchmarks.discovery import build_registry, list_algorithms_from_registry, list_methods_from_registry
-from ..benchmarks.template import generate_benchmark_template
+from ..benchmarks.template import generate_benchmark_template, create_benchmark_scaffold
 from ..benchmarks.registry import list_algorithms as list_builtin_algorithms
+from ..benchmarks.discovery import USER_REGISTRY_FILENAME
 from ..config import load_tool_paths
 
 
@@ -39,6 +40,38 @@ def _parse_algorithm_runs(values: Optional[list]) -> Dict[str, int]:
             raise ValueError(f"Run count for algorithm '{algorithm}' must be positive")
         parsed[algorithm] = run_count
     return parsed
+
+
+def _resolve_benchmarks_dir(cli_value: Optional[str]) -> Optional[Path]:
+    """
+    Resolve benchmark directory from CLI value or auto-detect ./benchmarks.
+
+    Priority:
+    1) Explicit --benchmarks-dir
+    2) Auto-detect ./benchmarks when pgsi_registry.json exists
+    3) None (built-ins only)
+    """
+    if cli_value:
+        return Path(cli_value)
+    candidate = Path.cwd() / "benchmarks"
+    if (candidate / USER_REGISTRY_FILENAME).exists():
+        return candidate
+    return None
+
+
+def _bootstrap_default_project() -> Path:
+    """
+    Create default benchmark project in ./benchmarks when running pgsi-analyzer
+    with no command.
+    """
+    target = Path.cwd() / "benchmarks"
+    if target.exists() and any(target.iterdir()):
+        return target
+    return generate_benchmark_template(
+        output_dir=target,
+        algorithms=list_builtin_algorithms(),
+        force=False,
+    )
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -66,12 +99,66 @@ Examples:
   # Run a single benchmark
   pgsi-analyzer benchmark run --algorithms hanoi --methods cpython --runs 5
 
+  # Create a user benchmark project scaffold (Django-style)
+  pgsi-analyzer startproject my-benchmarks --algorithms all
+
   # Run full benchmark suite
   pgsi-analyzer benchmark run --algorithms all --methods all --runs 50
         """
     )
     
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # startproject (Django-style scaffold)
+    startproject_parser = subparsers.add_parser(
+        'startproject',
+        help='Generate user benchmark project scaffold (Django-style)'
+    )
+    startproject_parser.add_argument(
+        'name',
+        type=str,
+        help='Project directory to create (e.g. my-benchmarks)'
+    )
+    startproject_parser.add_argument(
+        '--algorithms',
+        type=str,
+        nargs='+',
+        default=['all'],
+        help='Algorithms to scaffold (default: all built-ins)'
+    )
+    startproject_parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Allow generation in non-empty output directory'
+    )
+
+    # create benchmark (single benchmark scaffold + registry update)
+    create_parser = subparsers.add_parser(
+        'create',
+        help='Create project resources (e.g., benchmark scaffold)'
+    )
+    create_subparsers = create_parser.add_subparsers(dest='create_command', help='Create commands')
+    create_benchmark_parser = create_subparsers.add_parser(
+        'benchmark',
+        help='Create one benchmark scaffold and register it'
+    )
+    create_benchmark_parser.add_argument(
+        '--name',
+        type=str,
+        required=True,
+        help='Benchmark name (e.g. my_algo)'
+    )
+    create_benchmark_parser.add_argument(
+        '--benchmarks-dir',
+        type=str,
+        default='benchmarks',
+        help='Target benchmark directory (default: ./benchmarks)'
+    )
+    create_benchmark_parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Overwrite existing benchmark files if present'
+    )
     
     # benchmark: run benchmark suite
     benchmark_parser = subparsers.add_parser(
@@ -217,10 +304,14 @@ Examples:
     # Parse arguments
     args = parser.parse_args(argv)
     
-    # If no command provided, show help
+    # If no command provided, bootstrap default project
     if not args.command:
-        parser.print_help()
-        return 1
+        created = _bootstrap_default_project()
+        print(f"PGSI project ready at: {created}")
+        print("Next step:")
+        print("  pgsi-analyzer create benchmark --name A1 --benchmarks-dir ./benchmarks")
+        print("  pgsi-analyzer benchmark run --algorithms all --methods all")
+        return 0
     
     try:
         if args.command == 'benchmark':
@@ -229,7 +320,7 @@ Examples:
                 return 1
             
             if args.benchmark_command == 'list':
-                benchmarks_dir = Path(args.benchmarks_dir) if getattr(args, "benchmarks_dir", None) else None
+                benchmarks_dir = _resolve_benchmarks_dir(getattr(args, "benchmarks_dir", None))
                 registry = build_registry(benchmarks_dir)
                 if args.algorithms:
                     algorithms = list_algorithms_from_registry(registry)
@@ -277,7 +368,7 @@ Examples:
                     gamma=args.gamma,
                     tool_paths=tool_paths,
                     path_sources=path_sources,
-                    benchmarks_dir=Path(args.benchmarks_dir) if args.benchmarks_dir else None,
+                    benchmarks_dir=_resolve_benchmarks_dir(args.benchmarks_dir),
                 )
                 print("Benchmark suite completed successfully!")
                 print(f"   GreenScore results: {greenscore_path}")
@@ -295,6 +386,35 @@ Examples:
                 print(f"Benchmark template generated at: {generated}")
                 print("Next step:")
                 print(f"  pgsi-analyzer benchmark run --algorithms all --methods all --benchmarks-dir {generated}")
+                return 0
+        elif args.command == 'startproject':
+            selected_algorithms = (
+                list_builtin_algorithms() if "all" in args.algorithms else args.algorithms
+            )
+            generated = generate_benchmark_template(
+                output_dir=Path(args.name),
+                algorithms=selected_algorithms,
+                force=bool(args.force),
+            )
+            print(f"Project scaffold created at: {generated}")
+            print("Next step:")
+            print(f"  pgsi-analyzer benchmark run --algorithms all --methods all --benchmarks-dir {generated}")
+            return 0
+        elif args.command == 'create':
+            if not args.create_command:
+                create_parser.print_help()
+                return 1
+            if args.create_command == 'benchmark':
+                created = create_benchmark_scaffold(
+                    benchmarks_dir=Path(args.benchmarks_dir),
+                    benchmark_name=args.name,
+                    force=bool(args.force),
+                    register=True,
+                )
+                print(f"Benchmark scaffold created: {created}")
+                print(f"Registry updated: {Path(args.benchmarks_dir) / 'pgsi_registry.json'}")
+                print("Next step:")
+                print(f"  pgsi-analyzer benchmark run --algorithms {args.name} --methods cpython --benchmarks-dir {Path(args.benchmarks_dir)}")
                 return 0
         
         return 0

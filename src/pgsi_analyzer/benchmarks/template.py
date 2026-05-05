@@ -2,10 +2,14 @@
 Scaffolding helpers for user benchmark template generation.
 """
 
+import json
+import re
+import shutil
 from pathlib import Path
 from typing import Iterable, List
 
 from .registry import list_algorithms
+from .discovery import USER_REGISTRY_FILENAME
 
 PYTHON_MAIN_TEMPLATE = '''"""
 PGSI benchmark template for: {algorithm} / {method}
@@ -117,7 +121,8 @@ def _validate_algorithms(algorithms: Iterable[str]) -> List[str]:
 
 def generate_benchmark_template(output_dir: Path, algorithms: Iterable[str], force: bool = False) -> Path:
     """
-    Generate a benchmark template tree for external user projects.
+    Generate a benchmark project tree for external user projects using
+    pre-implemented built-in source files.
     """
     root = Path(output_dir)
     selected_algorithms = _validate_algorithms(algorithms)
@@ -130,22 +135,102 @@ def generate_benchmark_template(output_dir: Path, algorithms: Iterable[str], for
 
     (root / "README.md").write_text(ROOT_README_TEMPLATE, encoding="utf-8")
 
+    package_benchmarks_root = Path(__file__).resolve().parent
     methods = ["cpython", "pypy", "cython", "ctypes", "py_compile"]
     for algorithm in selected_algorithms:
+        source_algorithm_dir = package_benchmarks_root / algorithm
         for method in methods:
-            method_dir = root / algorithm / method
-            method_dir.mkdir(parents=True, exist_ok=True)
-            main_py = method_dir / "main.py"
-            main_py.write_text(
-                PYTHON_MAIN_TEMPLATE.format(algorithm=algorithm, method=method),
-                encoding="utf-8",
-            )
+            method_source_dir = source_algorithm_dir / method
+            method_target_dir = root / algorithm / method
+            method_target_dir.mkdir(parents=True, exist_ok=True)
 
-            if method == "cython":
-                (method_dir / "raw.pyx").write_text(CYTHON_RAW_TEMPLATE, encoding="utf-8")
-                (method_dir / "setup.py").write_text(CYTHON_SETUP_TEMPLATE, encoding="utf-8")
-            elif method == "ctypes":
-                (method_dir / "raw.c").write_text(CTYPES_C_TEMPLATE, encoding="utf-8")
+            # Copy key source files only (avoid build artifacts / result CSVs).
+            for pattern in ("*.py", "*.pyx", "*.pxd", "*.c", "*.h"):
+                for source_file in method_source_dir.glob(pattern):
+                    if source_file.is_file():
+                        shutil.copy2(source_file, method_target_dir / source_file.name)
+
+            # If no source file exists for this method in package, fallback to template.
+            if not any(method_target_dir.glob("*")):
+                (method_target_dir / "main.py").write_text(
+                    PYTHON_MAIN_TEMPLATE.format(algorithm=algorithm, method=method),
+                    encoding="utf-8",
+                )
+                if method == "cython":
+                    (method_target_dir / "raw.pyx").write_text(CYTHON_RAW_TEMPLATE, encoding="utf-8")
+                    (method_target_dir / "setup.py").write_text(CYTHON_SETUP_TEMPLATE, encoding="utf-8")
+                elif method == "ctypes":
+                    (method_target_dir / "raw.c").write_text(CTYPES_C_TEMPLATE, encoding="utf-8")
 
     return root
+
+
+def _validate_benchmark_name(name: str) -> str:
+    clean = name.strip()
+    if not clean:
+        raise ValueError("Benchmark name cannot be empty.")
+    if not re.match(r"^[A-Za-z0-9][A-Za-z0-9_-]*$", clean):
+        raise ValueError(
+            "Invalid benchmark name. Use letters, numbers, '-' or '_' (no spaces/symbols)."
+        )
+    return clean
+
+
+def _upsert_user_registry(benchmarks_dir: Path, benchmark_name: str) -> None:
+    registry_path = benchmarks_dir / USER_REGISTRY_FILENAME
+    if registry_path.exists():
+        try:
+            data = json.loads(registry_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in {registry_path}: {exc}") from exc
+    else:
+        data = {"benchmarks": {}}
+
+    benchmarks = data.setdefault("benchmarks", {})
+    benchmarks[benchmark_name] = {
+        "cpython": f"{benchmark_name}/cpython/main.py",
+        "pypy": f"{benchmark_name}/pypy/main.py",
+        "cython": f"{benchmark_name}/cython",
+        "ctypes": f"{benchmark_name}/ctypes",
+        "py_compile": f"{benchmark_name}/py_compile/main.py",
+    }
+    registry_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def create_benchmark_scaffold(
+    benchmarks_dir: Path,
+    benchmark_name: str,
+    force: bool = False,
+    register: bool = True,
+) -> Path:
+    """
+    Create a single benchmark scaffold under benchmarks_dir and register it.
+    """
+    root = Path(benchmarks_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    name = _validate_benchmark_name(benchmark_name)
+    target = root / name
+
+    if target.exists() and any(target.rglob("*")) and not force:
+        raise ValueError(
+            f"Benchmark directory '{target}' already exists and is not empty. Use --force to overwrite files."
+        )
+
+    methods = ["cpython", "pypy", "cython", "ctypes", "py_compile"]
+    for method in methods:
+        method_dir = target / method
+        method_dir.mkdir(parents=True, exist_ok=True)
+        (method_dir / "main.py").write_text(
+            PYTHON_MAIN_TEMPLATE.format(algorithm=name, method=method),
+            encoding="utf-8",
+        )
+        if method == "cython":
+            (method_dir / "raw.pyx").write_text(CYTHON_RAW_TEMPLATE, encoding="utf-8")
+            (method_dir / "setup.py").write_text(CYTHON_SETUP_TEMPLATE, encoding="utf-8")
+        elif method == "ctypes":
+            (method_dir / "raw.c").write_text(CTYPES_C_TEMPLATE, encoding="utf-8")
+
+    if register:
+        _upsert_user_registry(root, name)
+    return target
 

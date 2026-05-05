@@ -251,6 +251,11 @@ def build_benchmark(
     """
     if not requires_build(method):
         return benchmark_path  # No build needed
+
+    # Compatibility guard: older registries/discovery may resolve build-based
+    # methods to .../main.py. Build routines require the method directory.
+    if benchmark_path.is_file() and benchmark_path.name == "main.py":
+        benchmark_path = benchmark_path.parent
     
     if method == "cython":
         return build_cython(benchmark_path, tool_paths=tool_paths)

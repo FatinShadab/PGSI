@@ -286,6 +286,17 @@ class TestBuildBenchmark:
         mock_build_ctypes.assert_called_once()
         assert mock_build_ctypes.call_args[0][0] == Path("/test/benchmark")
 
+    @patch('pgsi_analyzer.benchmark.builder.build_cython')
+    def test_build_benchmark_cython_accepts_main_py_path(self, mock_build_cython):
+        """Test build methods normalize .../main.py to method directory."""
+        mock_build_cython.return_value = Path("/test/benchmark")
+
+        result = build_benchmark("hanoi", "cython", Path("/test/benchmark/main.py"))
+
+        assert result == Path("/test/benchmark")
+        mock_build_cython.assert_called_once()
+        assert mock_build_cython.call_args[0][0] == Path("/test/benchmark")
+
     def test_build_benchmark_no_build_needed(self):
         """Test that methods not requiring build return path unchanged."""
         benchmark_path = Path("/test/benchmark")

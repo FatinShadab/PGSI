@@ -52,8 +52,26 @@ pip install pgsi-analyzer
 2. Generate a benchmark scaffold in your own project folder:
 
 ```bash
+pgsi-analyzer startproject my-benchmarks --algorithms hanoi
+```
+
+Equivalent command (also supported):
+
+```bash
 pgsi-analyzer benchmark init-template --output ./my-benchmarks --algorithms hanoi
 ```
+
+Create a single custom benchmark and auto-register it:
+
+```bash
+pgsi-analyzer create benchmark --name A1 --benchmarks-dir ./my-benchmarks
+```
+
+This creates `./my-benchmarks/A1/...` and updates `./my-benchmarks/pgsi_registry.json`.
+
+Tip: when running from a project that has `./benchmarks/pgsi_registry.json`,
+`benchmark list` and `benchmark run` auto-detect `./benchmarks` even if
+`--benchmarks-dir` is omitted.
 
 3. Implement your algorithm workload by editing generated files under:
    `<benchmarks_dir>/<algorithm>/<method>/main.py`
@@ -131,6 +149,8 @@ The tool orchestrates a complete measurement and analysis pipeline:
 - `pgsi-analyzer benchmark list`: Lists available algorithms and methods
 - `pgsi-analyzer benchmark run`: Executes benchmarks and generates results
 - `pgsi-analyzer benchmark init-template`: Generates a Django-style user benchmark scaffold
+- `pgsi-analyzer startproject <name>`: Django-like one-command project scaffold
+- `pgsi-analyzer create benchmark --name <name>`: Creates one benchmark scaffold and registers it
 - Supports flexible algorithm/method selection (`all` or specific names)
 - Configurable global runs, per-algorithm run overrides, output directories, and GreenScore weights
 
@@ -265,13 +285,13 @@ pgsi-analyzer-gui
 ```
 
 The GUI provides:
+- Step 1 project setup page (create a new benchmark project or load an existing one)
+- Step 2 run page with benchmark/method selection and run configuration
 - Setup field for `.env` path
-- Multi-select benchmark algorithms and execution methods
-- Run parameters (`runs`, output directory, carbon intensity, alpha/beta/gamma)
 - Per-algorithm run override dialog (set different run counts per selected algorithm)
-- Responsive layout (scrollable run configuration + adaptive algorithm grid columns)
-- Modern dark theme UI
-- Live run log and one-click output folder access
+- Live run log with progress bar updates from `[x/y]` execution progress
+- Final GreenScore ranking popup (pyramid view) when a run completes successfully
+- One-click output folder access
 
 ### GUI Quick Workflow (Screenshot)
 

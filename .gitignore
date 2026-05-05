@@ -183,3 +183,5 @@ dev_test/*
 .pypy-venv
 
 dev/
+
+examples/

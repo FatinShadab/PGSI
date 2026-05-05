@@ -17,15 +17,19 @@ PGSI Analyzer implements a complete benchmark execution and analysis pipeline:
 
 ### CLI Surface
 
-The tool provides two main commands:
+The tool provides project scaffolding plus benchmark execution commands:
 
-- **`pgsi-analyzer benchmark list`**: Lists all available algorithms and execution methods
+- **`pgsi-analyzer`**: Bootstraps `./benchmarks` on first run (when no command is provided)
+- **`pgsi-analyzer startproject <name> --algorithms ...`**: Creates a user benchmark project scaffold
+- **`pgsi-analyzer create benchmark --name <name> --benchmarks-dir <dir>`**: Adds one benchmark scaffold and updates `pgsi_registry.json`
+- **`pgsi-analyzer benchmark list`**: Lists available algorithms and execution methods
 - **`pgsi-analyzer benchmark run`**: Executes benchmarks with configurable options:
   - `--algorithms`: Select specific algorithms or use `all`
   - `--methods`: Select specific methods or use `all`
   - `--runs`: Number of runs per benchmark (default: 50)
   - `--output`: Output directory (default: `results/`)
   - `--alpha`, `--beta`, `--gamma`: GreenScore weight configuration
+  - `--benchmarks-dir`: Include user benchmark projects
   - `--env-file`, `--python-path`, `--pypy-path`, `--cc-path`: Tool path configuration
 
 ### Known Limitations and Warnings
@@ -126,6 +130,9 @@ PGSI_CC_PATH=C:\Program Files\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw6
 ### Step 5: Verify Installation
 
 ```bash
+# Optional: bootstrap default local project scaffold
+pgsi-analyzer
+
 # List available benchmarks
 pgsi-analyzer benchmark list
 ```

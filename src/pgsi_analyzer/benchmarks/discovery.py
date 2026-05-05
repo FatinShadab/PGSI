@@ -7,6 +7,7 @@ User-defined benchmarks are discovered from a folder with this layout:
 Methods should match pgsi execution methods (cpython, pypy, cython, ctypes, py_compile).
 """
 
+import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -15,6 +16,7 @@ from .registry import VALID_METHODS
 
 
 RegistryMap = Dict[str, Dict[str, str]]
+USER_REGISTRY_FILENAME = "pgsi_registry.json"
 
 
 def discover_user_benchmarks(benchmarks_dir: Path) -> RegistryMap:
@@ -33,16 +35,47 @@ def discover_user_benchmarks(benchmarks_dir: Path) -> RegistryMap:
         for method in VALID_METHODS:
             method_dir = algorithm_dir / method
             main_py = method_dir / "main.py"
-            if main_py.exists() and main_py.is_file():
+            if method in ("cython", "ctypes"):
+                # Build-based methods must resolve to the directory so the build
+                # step can find setup.py / *.c next to main.py.
+                if method_dir.exists() and method_dir.is_dir():
+                    methods[method] = str(method_dir.resolve())
+            elif main_py.exists() and main_py.is_file():
                 methods[method] = str(main_py.resolve())
-            elif method in ("cython", "ctypes") and method_dir.exists() and method_dir.is_dir():
-                # Keep build-based methods compatible with builder/executor flow.
-                methods[method] = str(method_dir.resolve())
 
         if methods:
             discovered[algorithm_name] = methods
 
     return discovered
+
+
+def load_user_registry(benchmarks_dir: Path) -> RegistryMap:
+    """
+    Load optional user registry file from benchmarks_dir/pgsi_registry.json.
+    Format:
+      {"benchmarks": {"algo-name": {"cpython": "...", ...}}}
+    """
+    root = Path(benchmarks_dir)
+    registry_file = root / USER_REGISTRY_FILENAME
+    if not registry_file.exists():
+        return {}
+
+    data = json.loads(registry_file.read_text(encoding="utf-8"))
+    raw = data.get("benchmarks", {})
+    loaded: RegistryMap = {}
+    for algorithm, methods in raw.items():
+        if not isinstance(methods, dict):
+            continue
+        normalized_methods: Dict[str, str] = {}
+        for method, relative_or_abs in methods.items():
+            if method not in VALID_METHODS or not isinstance(relative_or_abs, str):
+                continue
+            candidate = Path(relative_or_abs)
+            full = candidate if candidate.is_absolute() else (root / candidate)
+            normalized_methods[method] = str(full.resolve())
+        if normalized_methods:
+            loaded[algorithm] = normalized_methods
+    return loaded
 
 
 def build_registry(benchmarks_dir: Optional[Path] = None) -> RegistryMap:
@@ -59,6 +92,9 @@ def build_registry(benchmarks_dir: Optional[Path] = None) -> RegistryMap:
         return registry
 
     user_registry = discover_user_benchmarks(benchmarks_dir)
+    file_registry = load_user_registry(benchmarks_dir)
+    for algorithm, methods in file_registry.items():
+        user_registry[algorithm] = methods
     for algorithm, methods in user_registry.items():
         registry[algorithm] = methods
     return registry
