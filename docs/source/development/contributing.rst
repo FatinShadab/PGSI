@@ -13,6 +13,15 @@ Repository Layout
 Set Up a Local Dev Environment
 ------------------------------
 
+Clone the repository from GitHub:
+
+.. code-block:: bash
+
+   git clone https://github.com/FatinShadab/PGSI.git
+   cd PGSI
+
+Create and activate a virtual environment, then install in editable mode:
+
 .. code-block:: bash
 
    python -m venv .venv

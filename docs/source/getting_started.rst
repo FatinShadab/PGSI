@@ -15,6 +15,14 @@ Prerequisites
 Installation
 ------------
 
+Install from source (GitHub):
+
+.. code-block:: bash
+
+   git clone https://github.com/FatinShadab/PGSI.git
+   cd PGSI
+   pip install -e .
+
 Install from your local repository checkout:
 
 .. code-block:: bash
