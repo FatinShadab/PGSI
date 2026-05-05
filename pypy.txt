@@ -1,3 +1,7 @@
 pip install cython numpy
 pip install pandas --no-cache-dir
 pip install --upgrade pip setuptools wheel
+
+
+
+pgsi-analyzer create benchmark --name a-star --benchmarks-dir ./examples/my-benchmarks-2

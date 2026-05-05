@@ -10,6 +10,7 @@ from unittest.mock import patch, MagicMock
 
 from pgsi_analyzer.measurement.estimators import (
     get_cpu_tdp,
+    resolve_cpu_power_provenance,
     estimate_energy_cpu_time,
     estimate_energy_from_codecarbon,
     estimate_energy_from_psutil,
@@ -35,7 +36,7 @@ class TestCPUTDP:
     def test_get_cpu_tdp_apple_m1(self):
         """Test TDP lookup for Apple M1."""
         tdp = get_cpu_tdp("Apple M1")
-        assert tdp == 20.0
+        assert tdp == 10.0
 
     def test_get_cpu_tdp_unknown_cpu(self):
         """Test TDP lookup for unknown CPU returns default."""
@@ -52,7 +53,7 @@ class TestCPUTDP:
     def test_get_cpu_tdp_partial_match(self):
         """Test TDP lookup with partial matches."""
         tdp = get_cpu_tdp("Intel Core i7-9700K")
-        assert tdp == 65.0
+        assert tdp == 95.0
 
 
 class TestEnergyEstimation:
@@ -154,7 +155,7 @@ class TestEnergyEstimation:
         assert len(result) == 3
         energy, model, methodology = result
         assert energy > 0
-        assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic", "estimated_codecarbon")
+        assert methodology in ("dataset_tdp", "generic_tdp", "estimated_codecarbon")
 
     def test_estimate_energy_reasonable_values(self):
         """Test that estimated energy values are reasonable."""
@@ -179,7 +180,7 @@ class TestEnergyEstimation:
             energy, model, methodology = estimate_energy_cpu_time(1.0, cpu_info)
             assert energy > 0
             assert isinstance(model, str)
-            assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic", "estimated_codecarbon")
+            assert methodology in ("dataset_tdp", "generic_tdp", "estimated_codecarbon")
 
 
 class TestEstimationIntegration:
@@ -253,5 +254,15 @@ class TestCodeCarbonEstimation:
         )
 
         assert energy > 0
-        assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
+        assert methodology in ("dataset_tdp", "generic_tdp")
+
+    def test_resolve_cpu_power_provenance_raspberry_pi(self):
+        provenance = resolve_cpu_power_provenance("ARM Cortex-A72 BCM2711")
+        assert provenance["methodology"] in ("dataset_tdp", "generic_tdp")
+        assert provenance["source"] in ("codecarbon_cpu_power_csv", "generic_tdp_default")
+
+    def test_resolve_cpu_power_provenance_unknown(self):
+        provenance = resolve_cpu_power_provenance("mystery-cpu-123")
+        assert provenance["methodology"] == "generic_tdp"
+        assert provenance["source"] == "generic_tdp_default"
 

@@ -49,6 +49,12 @@ End-user workflow (outside package source):
 pip install pgsi-analyzer
 ```
 
+Recommended benchmark profile (explicit, production-oriented):
+
+```bash
+pip install "pgsi-analyzer[energy,analysis]"
+```
+
 2. Generate a benchmark scaffold in your own project folder:
 
 ```bash
@@ -178,10 +184,11 @@ Install from PyPI (or install from source):
 pip install pgsi-analyzer
 ```
 
-This automatically installs Python dependencies including:
+This automatically installs core Python dependencies including:
 - `cython>=3.0.0` (for Cython benchmark compilation)
 - `python-dotenv>=1.0.0` (for `.env` file support)
 - `pandas`, `matplotlib`, `numpy`, `psutil` (core analysis libraries)
+- `codecarbon` (default cross-platform energy fallback)
 
 ### System Prerequisites
 
@@ -220,7 +227,16 @@ PGSI uses a deterministic fallback chain so energy collection works across deskt
 
 1. **`pyRAPL`** (preferred): used only when running on **Linux x86_64** with Intel RAPL access.
 2. **`codecarbon`**: used when `pyRAPL` is not available (for example on **macOS**, **Windows**, **Linux ARM**, and **Raspberry Pi**).
-3. **CPU-time/TDP model**: final fallback when `codecarbon` is not installed or cannot return usable energy data.
+3. **CPU-time/TDP model**: final fallback when `codecarbon` cannot return usable energy data.
+
+### Methodology Provenance Tags
+
+Each energy row now includes auditable methodology tags:
+
+- `hardware_rapl_linux`: direct pyRAPL hardware counters.
+- `estimated_codecarbon`: CodeCarbon tracker returned energy.
+- `dataset_tdp`: dataset-backed CPU power resolution from packaged `cpu_power.csv`.
+- `generic_tdp`: last-resort generic fallback when no dataset match is found.
 
 This means benchmark runs can continue on macOS, Windows, Linux, and Raspberry Pi without failing due to missing hardware counters.
 

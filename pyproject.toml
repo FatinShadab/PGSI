@@ -55,6 +55,7 @@ dependencies = [
     "matplotlib>=3.7.0",
     "numpy>=1.24.0",
     "psutil>=5.9.0",
+    "codecarbon>=2.6.0",
     "cython>=3.0.0",
     "python-dotenv>=1.0.0",
 ]
@@ -62,7 +63,6 @@ dependencies = [
 [project.optional-dependencies]
 energy = [
     "pyRAPL>=0.2.3; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "codecarbon>=2.6.0",
 ]
 analysis = [
     "scipy>=1.10.0",
@@ -93,7 +93,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"pgsi_analyzer" = ["config/*.json", "config/*.yaml"]
+"pgsi_analyzer" = ["config/*.json", "config/*.yaml", "config/*.csv"]
 "pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py"]
 
 [tool.black]
