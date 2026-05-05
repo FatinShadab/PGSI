@@ -88,13 +88,14 @@ Issues = "https://github.com/FatinShadab/python-energy-microscope/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 "pgsi_analyzer" = ["config/*.json", "config/*.yaml", "config/*.csv"]
-"pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py"]
+"pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py", "**/*.dll", "**/*.so"]
 
 [tool.black]
 line-length = 100
