@@ -112,6 +112,7 @@ def run_benchmark_suite(
     algorithms: List[str],
     methods: List[str],
     runs: int = 50,
+    algorithm_runs: Optional[Dict[str, int]] = None,
     output_dir: Path = None,
     carbon_intensity: float = 0.000475,
     alpha: float = 0.4,
@@ -138,6 +139,7 @@ def run_benchmark_suite(
         algorithms: List of algorithm names or ['all']
         methods: List of method names or ['all']
         runs: Number of runs per benchmark (default: 50)
+        algorithm_runs: Optional per-algorithm run overrides (e.g. {"hanoi": 10})
         output_dir: Base directory for all outputs (defaults to ./results)
         carbon_intensity: Carbon intensity factor in gCO₂e/J (default: 0.000475)
         alpha: Energy weight for GreenScore (default: 0.4)
@@ -193,9 +195,9 @@ def run_benchmark_suite(
                     benchmark_path = get_benchmark_path(algorithm, method)
                     built_path = build_benchmark(algorithm, method, benchmark_path, tool_paths=tool_paths)
                     built_benchmarks.setdefault(algorithm, {})[method] = built_path
-                    print("✓")
+                    print("OK")
                 except Exception as e:
-                    print(f"✗ Error: {e}")
+                    print(f"ERROR: {e}")
                     # Continue with other benchmarks
                     continue
     
@@ -212,6 +214,7 @@ def run_benchmark_suite(
             print(f"  [{current}/{total_combinations}] {algorithm}/{method}...", end=" ", flush=True)
             
             try:
+                effective_runs = int((algorithm_runs or {}).get(algorithm, runs))
                 # Get benchmark path (use built path if available)
                 if algorithm in built_benchmarks and method in built_benchmarks[algorithm]:
                     benchmark_path = built_benchmarks[algorithm][method]
@@ -225,17 +228,17 @@ def run_benchmark_suite(
                     algorithm=algorithm,
                     method=method,
                     benchmark_path=benchmark_path,
-                    runs=runs,
+                    runs=effective_runs,
                     output_dir=output_dir,
                     tool_paths=tool_paths,
                     audit_logger=audit_logger,
                 )
                 
                 execution_results[algorithm][method] = results
-                print("✓")
+                print("OK")
                 
             except Exception as e:
-                print(f"✗ Error: {e}")
+                print(f"ERROR: {e}")
                 # Continue with other benchmarks
                 continue
     
@@ -247,7 +250,7 @@ def run_benchmark_suite(
         report_path = output_dir / AUDIT_REPORT_FILENAME
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         if report.get("severity") == "HIGH":
-            print(f"  ⚠ Audit report: path mismatch detected — see {report_path}")
+            print(f"  WARNING: Audit report path mismatch detected - see {report_path}")
     except Exception:
         pass  # Do not fail the run if report write fails
 

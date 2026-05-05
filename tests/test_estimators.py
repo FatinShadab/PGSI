@@ -11,6 +11,7 @@ from unittest.mock import patch, MagicMock
 from pgsi_analyzer.measurement.estimators import (
     get_cpu_tdp,
     estimate_energy_cpu_time,
+    estimate_energy_from_codecarbon,
     estimate_energy_from_psutil,
     estimate_windows,
     estimate_macos,
@@ -153,7 +154,7 @@ class TestEnergyEstimation:
         assert len(result) == 3
         energy, model, methodology = result
         assert energy > 0
-        assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
+        assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic", "estimated_codecarbon")
 
     def test_estimate_energy_reasonable_values(self):
         """Test that estimated energy values are reasonable."""
@@ -178,7 +179,7 @@ class TestEnergyEstimation:
             energy, model, methodology = estimate_energy_cpu_time(1.0, cpu_info)
             assert energy > 0
             assert isinstance(model, str)
-            assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
+            assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic", "estimated_codecarbon")
 
 
 class TestEstimationIntegration:
@@ -217,4 +218,40 @@ class TestEstimationIntegration:
         # For 1 second at ~50W, should be ~50J = 50,000,000 μJ
         # Check it's in reasonable range (10J to 200J)
         assert 10 <= energy_joules <= 200
+
+
+class TestCodeCarbonEstimation:
+    """Tests for CodeCarbon-based estimation helper."""
+
+    def test_estimate_energy_from_codecarbon_uses_tracker_energy(self):
+        tracker = MagicMock()
+        tracker.final_emissions_data = MagicMock()
+        tracker.final_emissions_data.energy_consumed = 0.001  # kWh
+        tracker.final_emissions_data.country_name = "Testland"
+
+        energy, model, methodology = estimate_energy_from_codecarbon(
+            cpu_time_seconds=0.5,
+            tracker=tracker,
+            emissions_kg=0.0,
+            cpu_info={"processor": "Unknown"},
+        )
+
+        assert energy == pytest.approx(3.6e9)
+        assert "CodeCarbon" in model
+        assert methodology == "estimated_codecarbon"
+
+    def test_estimate_energy_from_codecarbon_falls_back_when_missing_energy(self):
+        tracker = MagicMock()
+        tracker.final_emissions_data = MagicMock()
+        tracker.final_emissions_data.energy_consumed = None
+
+        energy, model, methodology = estimate_energy_from_codecarbon(
+            cpu_time_seconds=1.0,
+            tracker=tracker,
+            emissions_kg=0.0,
+            cpu_info={"processor": "Unknown"},
+        )
+
+        assert energy > 0
+        assert methodology in ("estimated_cpu_tdp", "estimated_fallback_generic")
 

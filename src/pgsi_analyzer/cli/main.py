@@ -8,12 +8,35 @@ and listing operations.
 import sys
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from ..utils import PGSIAnalyzerError
 from ..benchmark import orchestrator
 from ..benchmarks.registry import list_algorithms, list_methods
 from ..config import load_tool_paths
+
+
+def _parse_algorithm_runs(values: Optional[list]) -> Dict[str, int]:
+    """Parse CLI --algorithm-runs values formatted as algorithm=runs."""
+    if not values:
+        return {}
+    parsed: Dict[str, int] = {}
+    for item in values:
+        if "=" not in item:
+            raise ValueError(f"Invalid --algorithm-runs value '{item}'. Expected format: algorithm=runs")
+        algorithm, run_text = item.split("=", 1)
+        algorithm = algorithm.strip()
+        run_text = run_text.strip()
+        if not algorithm:
+            raise ValueError(f"Invalid --algorithm-runs value '{item}': missing algorithm")
+        try:
+            run_count = int(run_text)
+        except ValueError as exc:
+            raise ValueError(f"Invalid run count '{run_text}' for algorithm '{algorithm}'") from exc
+        if run_count <= 0:
+            raise ValueError(f"Run count for algorithm '{algorithm}' must be positive")
+        parsed[algorithm] = run_count
+    return parsed
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -79,6 +102,12 @@ Examples:
         type=int,
         default=50,
         help='Number of runs per benchmark (default: 50)'
+    )
+    run_parser.add_argument(
+        '--algorithm-runs',
+        type=str,
+        nargs='*',
+        help='Optional per-algorithm run overrides in format algorithm=runs (e.g. hanoi=20 sieve=10)'
     )
     run_parser.add_argument(
         '--output',
@@ -195,10 +224,12 @@ Examples:
                 )
                 
                 output_path = Path(args.output)
+                algorithm_runs = _parse_algorithm_runs(args.algorithm_runs)
                 greenscore_path = orchestrator.run_benchmark_suite(
                     algorithms=args.algorithms,
                     methods=args.methods,
                     runs=args.runs,
+                    algorithm_runs=algorithm_runs,
                     output_dir=output_path,
                     carbon_intensity=args.carbon_intensity,
                     alpha=args.alpha,
@@ -207,17 +238,17 @@ Examples:
                     tool_paths=tool_paths,
                     path_sources=path_sources,
                 )
-                print(f"✅ Benchmark suite completed successfully!")
+                print("Benchmark suite completed successfully!")
                 print(f"   GreenScore results: {greenscore_path}")
                 return 0
         
         return 0
         
     except PGSIAnalyzerError as e:
-        print(f"❌ {e}")
+        print(f"ERROR: {e}")
         return 1
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f"ERROR: Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         return 1

@@ -62,6 +62,7 @@ dependencies = [
 [project.optional-dependencies]
 energy = [
     "pyRAPL>=0.2.3; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "codecarbon>=2.6.0",
 ]
 analysis = [
     "scipy>=1.10.0",
@@ -77,6 +78,7 @@ all = [
 
 [project.scripts]
 pgsi-analyzer = "pgsi_analyzer.cli:main"
+pgsi-analyzer-gui = "pgsi_analyzer.gui:main"
 
 [project.urls]
 Homepage = "https://github.com/FatinShadab/python-energy-microscope"

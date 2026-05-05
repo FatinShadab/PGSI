@@ -8,6 +8,7 @@ CPU time, TDP, and utilization models.
 """
 
 import csv
+import inspect
 import json
 import time
 import warnings
@@ -18,7 +19,7 @@ from datetime import datetime
 
 from ..platform.hardware import get_system_info, get_cpu_info, warn_if_rapl_unavailable
 from ..platform.detection import is_linux_intel, detect_platform
-from .estimators import estimate_energy
+from .estimators import estimate_energy, estimate_energy_from_codecarbon
 
 # Methodology tags for data source labeling (audit)
 METHODOLOGY_HARDWARE_RAPL_LINUX = "hardware_rapl_linux"
@@ -40,6 +41,43 @@ if is_linux_intel():
         _pyrapl_available = False
         pyRAPL = None
         warn_if_rapl_unavailable(e)
+
+
+_codecarbon_available = False
+_codecarbon_tracker_cls = None
+try:
+    from codecarbon import EmissionsTracker as _tracker_cls
+
+    _codecarbon_tracker_cls = _tracker_cls
+    _codecarbon_available = True
+except Exception:
+    _codecarbon_available = False
+    _codecarbon_tracker_cls = None
+
+
+def _create_codecarbon_tracker():
+    """Build a best-effort CodeCarbon tracker across versions."""
+    if not _codecarbon_available or _codecarbon_tracker_cls is None:
+        return None
+
+    kwargs = {}
+    try:
+        signature = inspect.signature(_codecarbon_tracker_cls.__init__)
+        params = signature.parameters
+        if "save_to_file" in params:
+            kwargs["save_to_file"] = False
+        if "save_to_logger" in params:
+            kwargs["save_to_logger"] = False
+        if "log_level" in params:
+            kwargs["log_level"] = "error"
+    except Exception:
+        # If introspection fails, instantiate with defaults.
+        kwargs = {}
+
+    try:
+        return _codecarbon_tracker_cls(**kwargs)
+    except Exception:
+        return None
 
 
 def measure_energy_to_csv(
@@ -90,7 +128,7 @@ def measure_energy_to_csv(
                 platform_name = detect_platform()
                 warnings.warn(
                     f"Hardware energy counters (pyRAPL) not available on {platform_name}. "
-                    f"Using estimation based on CPU time and TDP. "
+                    f"Using estimation (CodeCarbon when available, otherwise CPU time/TDP). "
                     f"Estimated values may differ from actual hardware measurements.",
                     UserWarning,
                     stacklevel=2
@@ -142,22 +180,46 @@ def measure_energy_to_csv(
                         method = 'hardware'
                         methodology = METHODOLOGY_HARDWARE_RAPL_LINUX
                     else:
-                        # Use estimation for non-Linux platforms
-                        # Measure CPU time
+                        # Use estimation fallback for non-RAPL environments
+                        # Measure CPU/wall time around function execution
                         start_cpu_time = time.process_time()
                         start_wall_time = time.time()
+                        tracker = _create_codecarbon_tracker()
+                        emissions_kg = None
+                        if tracker is not None:
+                            try:
+                                tracker.start()
+                            except Exception:
+                                tracker = None
+
                         result = func(*args, **kwargs)
+
+                        if tracker is not None:
+                            try:
+                                emissions_kg = tracker.stop()
+                            except Exception:
+                                emissions_kg = None
                         end_cpu_time = time.process_time()
                         end_wall_time = time.time()
                         
                         cpu_time = end_cpu_time - start_cpu_time
                         wall_time = end_wall_time - start_wall_time
                         
-                        # Use CPU time for estimation (more accurate for CPU-bound tasks)
-                        estimated_energy, estimation_model, methodology = estimate_energy(
-                            cpu_time,
-                            cpu_info
-                        )
+                        # Prefer CodeCarbon-derived energy when available, else TDP estimation.
+                        if tracker is not None:
+                            estimated_energy, estimation_model, methodology = (
+                                estimate_energy_from_codecarbon(
+                                    cpu_time,
+                                    tracker=tracker,
+                                    emissions_kg=emissions_kg,
+                                    cpu_info=cpu_info,
+                                )
+                            )
+                        else:
+                            estimated_energy, estimation_model, methodology = estimate_energy(
+                                cpu_time,
+                                cpu_info
+                            )
                         
                         package_energy = estimated_energy
                         dram_energy = 0  # DRAM estimation not implemented

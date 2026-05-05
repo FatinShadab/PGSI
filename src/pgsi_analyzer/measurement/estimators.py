@@ -12,6 +12,7 @@ from typing import Dict, Any, Tuple, Optional
 # Methodology tags for data source labeling (audit)
 METHODOLOGY_ESTIMATED_CPU_TDP = "estimated_cpu_tdp"
 METHODOLOGY_ESTIMATED_FALLBACK_GENERIC = "estimated_fallback_generic"
+METHODOLOGY_ESTIMATED_CODECARBON = "estimated_codecarbon"
 
 try:
     import psutil
@@ -305,4 +306,46 @@ def estimate_energy(
     else:
         # Fallback to CPU time-based estimation
         return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
+
+
+def estimate_energy_from_codecarbon(
+    cpu_time_seconds: float,
+    tracker: Optional[Any] = None,
+    emissions_kg: Optional[float] = None,
+    cpu_info: Optional[Dict[str, Any]] = None,
+) -> Tuple[float, str, str]:
+    """
+    Estimate energy using CodeCarbon tracker output when available.
+
+    If tracker metadata is insufficient to recover energy directly, this falls
+    back to the CPU-TDP model to keep behavior deterministic across platforms.
+    """
+    energy_kwh = None
+    model_name = "CodeCarbon-based"
+
+    if tracker is not None:
+        final_data = getattr(tracker, "final_emissions_data", None)
+        if final_data is not None:
+            energy_kwh = getattr(final_data, "energy_consumed", None)
+            country = getattr(final_data, "country_name", None)
+            if country:
+                model_name = f"CodeCarbon-based ({country})"
+
+        if energy_kwh is None:
+            total_energy = getattr(tracker, "_total_energy", None)
+            if total_energy is not None:
+                if isinstance(total_energy, (int, float)):
+                    energy_kwh = float(total_energy)
+                else:
+                    energy_kwh = getattr(total_energy, "kWh", None)
+
+    if isinstance(energy_kwh, (int, float)) and energy_kwh > 0:
+        return (
+            float(energy_kwh) * 3.6e12,  # 1 kWh = 3.6e6 J = 3.6e12 uJ
+            model_name,
+            METHODOLOGY_ESTIMATED_CODECARBON,
+        )
+
+    # Fall back to current deterministic CPU-time/TDP estimation.
+    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
 

@@ -20,6 +20,12 @@ from pgsi_analyzer.measurement.energy import _pyrapl_available
 from pgsi_analyzer.platform.detection import is_linux_intel
 import pgsi_analyzer.measurement.energy as energy_module
 
+ESTIMATION_METHOD_TAGS = (
+    'estimated_cpu_tdp',
+    'estimated_fallback_generic',
+    'estimated_codecarbon',
+)
+
 
 class TestCrossPlatformEnergy:
     """Tests for cross-platform energy measurement."""
@@ -67,8 +73,8 @@ class TestCrossPlatformEnergy:
                 assert len(rows) >= 3  # Header + 2 data rows
                 assert rows[1][5] == 'estimation'  # measurement_method column
                 assert rows[2][5] == 'estimation'
-                assert rows[1][methodology_col] in ('estimated_cpu_tdp', 'estimated_fallback_generic')
-                assert rows[2][methodology_col] in ('estimated_cpu_tdp', 'estimated_fallback_generic')
+                assert rows[1][methodology_col] in ESTIMATION_METHOD_TAGS
+                assert rows[2][methodology_col] in ESTIMATION_METHOD_TAGS
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
@@ -120,7 +126,7 @@ class TestCrossPlatformEnergy:
             assert len(rows) == 2
             assert "methodology" in rows[0]
             for row in rows:
-                assert row["methodology"] in ("estimated_cpu_tdp", "estimated_fallback_generic")
+                assert row["methodology"] in ESTIMATION_METHOD_TAGS
                 assert row["measurement_method"] == "estimation"
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')

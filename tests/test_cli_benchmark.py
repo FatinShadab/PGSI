@@ -124,6 +124,23 @@ class TestCLIBenchmarkRun:
         assert call_args[1]['carbon_intensity'] == 0.0005
 
     @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
+    def test_benchmark_run_algorithm_runs_override(self, mock_run_suite):
+        """Test benchmark run with per-algorithm run overrides."""
+        mock_run_suite.return_value = Path("/test/GreenScore.csv")
+
+        result = main([
+            'benchmark', 'run',
+            '--algorithms', 'hanoi', 'sieve',
+            '--methods', 'cpython',
+            '--runs', '5',
+            '--algorithm-runs', 'hanoi=9', 'sieve=3',
+        ])
+
+        assert result == 0
+        call_args = mock_run_suite.call_args
+        assert call_args[1]['algorithm_runs'] == {'hanoi': 9, 'sieve': 3}
+
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
     def test_benchmark_run_error_handling(self, mock_run_suite):
         """Test benchmark run error handling."""
         mock_run_suite.side_effect = ValueError("Invalid algorithm")
