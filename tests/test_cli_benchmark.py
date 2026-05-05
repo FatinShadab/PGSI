@@ -43,6 +43,22 @@ class TestCLIBenchmarkList:
             assert "Available execution methods" in captured.out
             assert "cpython" in captured.out
 
+    def test_benchmark_list_with_external_benchmarks_dir(self, capsys, tmp_path):
+        """Test listing algorithms includes externally discovered benchmark."""
+        custom_main = tmp_path / "user-benchmarks" / "demo-algo" / "cpython" / "main.py"
+        custom_main.parent.mkdir(parents=True)
+        custom_main.write_text("print('demo')\n")
+
+        result = main([
+            'benchmark', 'list',
+            '--algorithms',
+            '--benchmarks-dir', str(tmp_path / "user-benchmarks"),
+        ])
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "demo-algo" in captured.out
+
 
 class TestCLIBenchmarkRun:
     """Test benchmark run command."""
@@ -154,6 +170,25 @@ class TestCLIBenchmarkRun:
         
         assert result == 1
 
+    @patch('pgsi_analyzer.benchmark.orchestrator.run_benchmark_suite')
+    def test_benchmark_run_with_external_benchmarks_dir(self, mock_run_suite, tmp_path):
+        """Test external benchmarks directory is forwarded to orchestrator."""
+        mock_run_suite.return_value = Path("/test/GreenScore.csv")
+        custom_benchmarks = tmp_path / "my_benchmarks"
+        custom_benchmarks.mkdir()
+
+        result = main([
+            'benchmark', 'run',
+            '--algorithms', 'hanoi',
+            '--methods', 'cpython',
+            '--runs', '2',
+            '--benchmarks-dir', str(custom_benchmarks),
+        ])
+
+        assert result == 0
+        call_args = mock_run_suite.call_args
+        assert call_args[1]['benchmarks_dir'] == custom_benchmarks
+
     def test_benchmark_run_no_command(self, capsys):
         """Test benchmark command without subcommand shows help."""
         result = main(['benchmark'])
@@ -161,4 +196,41 @@ class TestCLIBenchmarkRun:
         assert result == 1
         captured = capsys.readouterr()
         assert "help" in captured.out.lower() or "usage" in captured.out.lower()
+
+
+class TestCLIBenchmarkTemplate:
+    """Test benchmark template scaffold command."""
+
+    def test_benchmark_init_template_generates_structure(self, tmp_path):
+        output_dir = tmp_path / "pgsi-template"
+
+        result = main([
+            'benchmark', 'init-template',
+            '--output', str(output_dir),
+            '--algorithms', 'hanoi',
+        ])
+
+        assert result == 0
+        assert (output_dir / "README.md").exists()
+        assert (output_dir / "hanoi" / "cpython" / "main.py").exists()
+        assert (output_dir / "hanoi" / "pypy" / "main.py").exists()
+        assert (output_dir / "hanoi" / "py_compile" / "main.py").exists()
+        assert (output_dir / "hanoi" / "cython" / "main.py").exists()
+        assert (output_dir / "hanoi" / "cython" / "raw.pyx").exists()
+        assert (output_dir / "hanoi" / "cython" / "setup.py").exists()
+        assert (output_dir / "hanoi" / "ctypes" / "main.py").exists()
+        assert (output_dir / "hanoi" / "ctypes" / "raw.c").exists()
+
+    def test_benchmark_init_template_non_empty_without_force_fails(self, tmp_path):
+        output_dir = tmp_path / "pgsi-template"
+        output_dir.mkdir()
+        (output_dir / "existing.txt").write_text("keep", encoding="utf-8")
+
+        result = main([
+            'benchmark', 'init-template',
+            '--output', str(output_dir),
+            '--algorithms', 'hanoi',
+        ])
+
+        assert result == 1
 

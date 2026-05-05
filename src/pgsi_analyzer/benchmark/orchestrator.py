@@ -29,12 +29,13 @@ from .results_collector import (
 )
 from .provider import FileSystemProvider
 from ..benchmarks.registry import (
-    BENCHMARKS,
-    list_algorithms,
-    list_methods,
-    get_benchmark_path,
-    validate_algorithm,
-    validate_method,
+    list_methods as list_methods_builtin,
+)
+from ..benchmarks.discovery import (
+    build_registry,
+    get_benchmark_path_from_registry,
+    list_algorithms_from_registry,
+    list_methods_from_registry,
 )
 from .builder import build_benchmark, requires_build
 from .executor import execute_benchmark, AuditLogger, AUDIT_REPORT_FILENAME
@@ -50,7 +51,17 @@ from ..utils import AnalysisError, ConfigurationError
 from ..config import ToolPaths
 
 
-def resolve_algorithms(algorithms: List[str]) -> List[str]:
+def get_benchmark_path(
+    algorithm: str, method: str, registry: Optional[Dict[str, Dict[str, str]]] = None
+) -> Path:
+    """
+    Backward-compatible path resolver used by tests and orchestrator internals.
+    """
+    active_registry = registry or build_registry()
+    return get_benchmark_path_from_registry(active_registry, algorithm, method)
+
+
+def resolve_algorithms(algorithms: List[str], registry: Optional[Dict[str, Dict[str, str]]] = None) -> List[str]:
     """
     Resolve algorithm list, expanding 'all' to all available algorithms.
     
@@ -60,20 +71,26 @@ def resolve_algorithms(algorithms: List[str]) -> List[str]:
     Returns:
         Sorted list of algorithm names
     """
+    active_registry = registry or build_registry()
+
     if "all" in algorithms:
-        return list_algorithms()
-    
-    # Validate all algorithms
-    invalid = [a for a in algorithms if not validate_algorithm(a)]
+        return list_algorithms_from_registry(active_registry)
+
+    available = set(active_registry.keys())
+    invalid = [a for a in algorithms if a not in available]
     if invalid:
         raise ValueError(
-            f"Invalid algorithms: {invalid}. Available: {list_algorithms()}"
+            f"Invalid algorithms: {invalid}. Available: {list_algorithms_from_registry(active_registry)}"
         )
     
     return sorted(set(algorithms))  # Deduplicate and sort
 
 
-def resolve_methods(methods: List[str], algorithm: Optional[str] = None) -> List[str]:
+def resolve_methods(
+    methods: List[str],
+    algorithm: Optional[str] = None,
+    registry: Optional[Dict[str, Dict[str, str]]] = None,
+) -> List[str]:
     """
     Resolve method list, expanding 'all' to all available methods.
     
@@ -84,19 +101,22 @@ def resolve_methods(methods: List[str], algorithm: Optional[str] = None) -> List
     Returns:
         List of method names in deterministic order
     """
+    active_registry = registry or build_registry()
+
     if "all" in methods:
-        return list_methods(algorithm)
+        return list_methods_from_registry(active_registry, algorithm)
     
     # Validate methods
     if algorithm:
-        invalid = [m for m in methods if not validate_method(algorithm, m)]
+        valid_for_algorithm = set(list_methods_from_registry(active_registry, algorithm))
+        invalid = [m for m in methods if m not in valid_for_algorithm]
         if invalid:
             raise ValueError(
                 f"Invalid methods for {algorithm}: {invalid}. "
-                f"Available: {list_methods(algorithm)}"
+                f"Available: {list_methods_from_registry(active_registry, algorithm)}"
             )
     else:
-        valid_methods = list_methods()
+        valid_methods = list_methods_from_registry(active_registry)
         invalid = [m for m in methods if m not in valid_methods]
         if invalid:
             raise ValueError(
@@ -104,7 +124,7 @@ def resolve_methods(methods: List[str], algorithm: Optional[str] = None) -> List
             )
     
     # Return in deterministic order
-    valid_order = list_methods()
+    valid_order = list_methods_builtin()
     return [m for m in valid_order if m in methods]
 
 
@@ -121,6 +141,7 @@ def run_benchmark_suite(
     tool_paths: Optional[ToolPaths] = None,
     path_sources: Optional[dict] = None,
     provider: Optional[FileSystemProvider] = None,
+    benchmarks_dir: Optional[Path] = None,
 ) -> Path:
     """
     Execute full benchmark suite and generate GreenScore CSV.
@@ -157,9 +178,11 @@ def run_benchmark_suite(
         ConfigurationError: If build fails
         AnalysisError: If data processing fails
     """
+    registry = build_registry(benchmarks_dir)
+
     # Resolve algorithm and method lists
-    algorithm_list = resolve_algorithms(algorithms)
-    method_list = resolve_methods(methods)
+    algorithm_list = resolve_algorithms(algorithms, registry=registry)
+    method_list = resolve_methods(methods, registry=registry)
     
     if output_dir is None:
         output_dir = Path.cwd() / "results"
@@ -192,7 +215,7 @@ def run_benchmark_suite(
             if requires_build(method):
                 print(f"  Building {algorithm}/{method}...", end=" ", flush=True)
                 try:
-                    benchmark_path = get_benchmark_path(algorithm, method)
+                    benchmark_path = get_benchmark_path(algorithm, method, registry=registry)
                     built_path = build_benchmark(algorithm, method, benchmark_path, tool_paths=tool_paths)
                     built_benchmarks.setdefault(algorithm, {})[method] = built_path
                     print("OK")
@@ -219,7 +242,7 @@ def run_benchmark_suite(
                 if algorithm in built_benchmarks and method in built_benchmarks[algorithm]:
                     benchmark_path = built_benchmarks[algorithm][method]
                 else:
-                    benchmark_path = get_benchmark_path(algorithm, method)
+                    benchmark_path = get_benchmark_path(algorithm, method, registry=registry)
                 
                 # Execute benchmark
                 # Note: The benchmark script itself handles runs via decorators

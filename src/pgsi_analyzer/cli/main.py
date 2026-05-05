@@ -12,7 +12,9 @@ from typing import Dict, Optional
 
 from ..utils import PGSIAnalyzerError
 from ..benchmark import orchestrator
-from ..benchmarks.registry import list_algorithms, list_methods
+from ..benchmarks.discovery import build_registry, list_algorithms_from_registry, list_methods_from_registry
+from ..benchmarks.template import generate_benchmark_template
+from ..benchmarks.registry import list_algorithms as list_builtin_algorithms
 from ..config import load_tool_paths
 
 
@@ -159,6 +161,12 @@ Examples:
         type=str,
         help='Path to C compiler executable (gcc/cl.exe) (overrides PGSI_CC_PATH and .env)'
     )
+    run_parser.add_argument(
+        '--benchmarks-dir',
+        type=str,
+        help='Optional path to user benchmark directory (<algorithm>/<method>/main.py). '
+             'Discovered benchmarks are merged with built-ins.'
+    )
     
     # benchmark list
     list_parser = benchmark_subparsers.add_parser(
@@ -174,6 +182,36 @@ Examples:
         '--methods',
         action='store_true',
         help='List available execution methods'
+    )
+    list_parser.add_argument(
+        '--benchmarks-dir',
+        type=str,
+        help='Optional path to user benchmark directory (<algorithm>/<method>/main.py). '
+             'Discovered benchmarks are merged with built-ins.'
+    )
+
+    # benchmark init-template
+    init_parser = benchmark_subparsers.add_parser(
+        'init-template',
+        help='Generate user benchmark template project (Django-style scaffold)'
+    )
+    init_parser.add_argument(
+        '--output',
+        type=str,
+        required=True,
+        help='Output directory where template tree will be generated'
+    )
+    init_parser.add_argument(
+        '--algorithms',
+        type=str,
+        nargs='+',
+        default=['all'],
+        help='Algorithms to scaffold (default: all built-ins)'
+    )
+    init_parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Allow generation in non-empty output directory'
     )
     
     # Parse arguments
@@ -191,19 +229,21 @@ Examples:
                 return 1
             
             if args.benchmark_command == 'list':
+                benchmarks_dir = Path(args.benchmarks_dir) if getattr(args, "benchmarks_dir", None) else None
+                registry = build_registry(benchmarks_dir)
                 if args.algorithms:
-                    algorithms = list_algorithms()
+                    algorithms = list_algorithms_from_registry(registry)
                     print("Available algorithms:")
                     for algo in algorithms:
                         print(f"  - {algo}")
                 elif args.methods:
-                    methods = list_methods()
+                    methods = list_methods_from_registry(registry)
                     print("Available execution methods:")
                     for method in methods:
                         print(f"  - {method}")
                 else:
-                    algorithms = list_algorithms()
-                    methods = list_methods()
+                    algorithms = list_algorithms_from_registry(registry)
+                    methods = list_methods_from_registry(registry)
                     print("Available algorithms:")
                     for algo in algorithms:
                         print(f"  - {algo}")
@@ -237,9 +277,24 @@ Examples:
                     gamma=args.gamma,
                     tool_paths=tool_paths,
                     path_sources=path_sources,
+                    benchmarks_dir=Path(args.benchmarks_dir) if args.benchmarks_dir else None,
                 )
                 print("Benchmark suite completed successfully!")
                 print(f"   GreenScore results: {greenscore_path}")
+                return 0
+
+            elif args.benchmark_command == 'init-template':
+                selected_algorithms = (
+                    list_builtin_algorithms() if "all" in args.algorithms else args.algorithms
+                )
+                generated = generate_benchmark_template(
+                    output_dir=Path(args.output),
+                    algorithms=selected_algorithms,
+                    force=bool(args.force),
+                )
+                print(f"Benchmark template generated at: {generated}")
+                print("Next step:")
+                print(f"  pgsi-analyzer benchmark run --algorithms all --methods all --benchmarks-dir {generated}")
                 return 0
         
         return 0

@@ -39,6 +39,81 @@ This results in **75 total benchmark combinations** (15 algorithms × 5 methods)
 - Deterministic benchmark registry with automatic discovery
 - Package-integrated benchmarks (no external scripts required)
 
+### Add a Benchmark (Developer Pattern)
+
+End-user workflow (outside package source):
+
+1. Install PGSI Analyzer in your project environment:
+
+```bash
+pip install pgsi-analyzer
+```
+
+2. Generate a benchmark scaffold in your own project folder:
+
+```bash
+pgsi-analyzer benchmark init-template --output ./my-benchmarks --algorithms hanoi
+```
+
+3. Implement your algorithm workload by editing generated files under:
+   `<benchmarks_dir>/<algorithm>/<method>/main.py`
+4. Keep the PGSI decorators on your benchmark functions:
+   - `@measure_energy_to_csv(n=get_measurement_runs("<algorithm>"), csv_filename="<algorithm>_<method>")`
+   - `@measure_time_to_csv(n=get_measurement_runs("<algorithm>"), csv_filename="<algorithm>_<method>")`
+5. Run/list with `--benchmarks-dir <benchmarks_dir>` to include your custom benchmarks
+
+The included KNN CPython benchmark is a concrete decorator example:
+- `src/pgsi_analyzer/benchmarks/knn/cpython/main.py`
+
+List algorithms including your custom folder:
+
+```bash
+pgsi-analyzer benchmark list --algorithms --benchmarks-dir ./my-benchmarks
+```
+
+Run your custom algorithm:
+
+```bash
+pgsi-analyzer benchmark run \
+  --algorithms my-algo \
+  --methods cpython \
+  --benchmarks-dir ./my-benchmarks
+```
+
+Generate a full template first (recommended):
+
+```bash
+pgsi-analyzer benchmark init-template --output ./my-benchmarks --algorithms all
+```
+
+This scaffolds the benchmark tree with commented starter files (including `cython`/`ctypes` support files), so end developers can implement directly in their own project folder.
+
+Quick help:
+
+```bash
+pgsi-analyzer benchmark init-template --help
+```
+
+Example generated tree (trimmed):
+
+```text
+my-benchmarks/
+├── README.md
+├── hanoi/
+│   ├── cpython/main.py
+│   ├── pypy/main.py
+│   ├── py_compile/main.py
+│   ├── cython/
+│   │   ├── main.py
+│   │   ├── raw.pyx
+│   │   └── setup.py
+│   └── ctypes/
+│       ├── main.py
+│       └── raw.c
+└── knn/
+    └── ...
+```
+
 ### Full Pipeline
 
 The tool orchestrates a complete measurement and analysis pipeline:
@@ -55,6 +130,7 @@ The tool orchestrates a complete measurement and analysis pipeline:
 
 - `pgsi-analyzer benchmark list`: Lists available algorithms and methods
 - `pgsi-analyzer benchmark run`: Executes benchmarks and generates results
+- `pgsi-analyzer benchmark init-template`: Generates a Django-style user benchmark scaffold
 - Supports flexible algorithm/method selection (`all` or specific names)
 - Configurable global runs, per-algorithm run overrides, output directories, and GreenScore weights
 
