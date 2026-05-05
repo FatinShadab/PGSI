@@ -56,11 +56,11 @@ Example ``.env``:
    PGSI_PYPY_PATH=/opt/pypy/bin/pypy3
    PGSI_CC_PATH=/usr/bin/gcc
 
-pyRAPL Setup (Linux x86_64)
----------------------------
+pyRAPL Setup (Linux Intel x86_64)
+---------------------------------
 
 If you want hardware-assisted energy measurement, install the optional ``energy`` extras.
-This enables ``pyRAPL`` on supported Linux x86_64 systems.
+This enables ``pyRAPL`` on supported Linux Intel x86_64 systems.
 
 Install with extras:
 
@@ -198,5 +198,11 @@ Troubleshooting First Runs
 - If ``pypy`` or compiler methods fail, run with ``--methods cpython`` first to validate baseline setup.
 - If no user benchmark is found, verify ``--benchmarks-dir`` points to a folder containing ``pgsi_registry.json``.
 - If output files are missing, inspect CLI stderr and ``audit_report.json`` for execution failures.
-- If you expected ``pyRAPL`` usage, confirm Linux x86_64 support and verify installation in the active Python environment.
+- If you expected ``pyRAPL`` usage, confirm Linux Intel x86_64 support and verify installation in the active Python environment.
+
+Related Pages
+-------------
+
+- For prerequisite setup (PyPy, GCC/Clang, environment checks), see :doc:`user-guide/prerequisites_and_tooling`.
+- For benchmark extension and registry workflow, see :doc:`benchmark-authoring/new_benchmark_workflow`.
 

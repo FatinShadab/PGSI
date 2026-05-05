@@ -31,12 +31,7 @@ except ImportError:
 @dataclass
 class ToolPaths:
     """
-    Container for tool executable paths.
-    
-    Attributes:
-        python: Path to Python interpreter (default: sys.executable)
-        pypy: Path to PyPy executable (None if not configured/found)
-        c_compiler: Path to C compiler (None if not configured/found)
+    Container for tool executable paths used during benchmark execution.
     """
     python: Path
     pypy: Optional[Path] = None
