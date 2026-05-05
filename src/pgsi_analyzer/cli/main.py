@@ -20,7 +20,26 @@ from ..config import load_tool_paths
 
 
 def _parse_algorithm_runs(values: Optional[list]) -> Dict[str, int]:
-    """Parse CLI --algorithm-runs values formatted as algorithm=runs."""
+    """Parse per-algorithm run overrides from CLI input.
+
+    The parser converts values like ``hanoi=20`` into a dictionary consumed by the
+    benchmark orchestrator. Validation is strict to fail fast and avoid launching
+    long benchmark suites with malformed override settings.
+
+    Args:
+        values: Raw values from ``--algorithm-runs`` argument.
+
+    Returns:
+        Dict[str, int]: Mapping of algorithm name to positive run count.
+
+    Raises:
+        ValueError: If an entry is malformed, missing algorithm name, non-integer,
+            or has a non-positive run count.
+
+    Examples:
+        >>> _parse_algorithm_runs(["hanoi=20", "fasta=10"])
+        {'hanoi': 20, 'fasta': 10}
+    """
     if not values:
         return {}
     parsed: Dict[str, int] = {}
@@ -43,13 +62,22 @@ def _parse_algorithm_runs(values: Optional[list]) -> Dict[str, int]:
 
 
 def _resolve_benchmarks_dir(cli_value: Optional[str]) -> Optional[Path]:
-    """
-    Resolve benchmark directory from CLI value or auto-detect ./benchmarks.
+    """Resolve benchmark directory from CLI value or auto-detect project folder.
 
-    Priority:
-    1) Explicit --benchmarks-dir
-    2) Auto-detect ./benchmarks when pgsi_registry.json exists
-    3) None (built-ins only)
+    This resolution model keeps the common developer workflow frictionless: if a user
+    runs CLI inside a benchmark project, the local ``./benchmarks`` directory is used
+    automatically. Explicit CLI input always wins for reproducibility.
+
+    Args:
+        cli_value: Value passed via ``--benchmarks-dir``.
+
+    Returns:
+        Optional[Path]: Explicit or auto-detected benchmarks directory, or ``None``
+        when only built-in benchmarks should be used.
+
+    Examples:
+        >>> _resolve_benchmarks_dir("custom_benchmarks")
+        PosixPath('custom_benchmarks')
     """
     if cli_value:
         return Path(cli_value)
@@ -60,9 +88,22 @@ def _resolve_benchmarks_dir(cli_value: Optional[str]) -> Optional[Path]:
 
 
 def _bootstrap_default_project() -> Path:
-    """
-    Create default benchmark project in ./benchmarks when running pgsi-analyzer
-    with no command.
+    """Create default ``./benchmarks`` project when CLI runs without a subcommand.
+
+    Bootstrapping a ready-to-edit project on first run lowers onboarding friction for
+    users who execute ``pgsi-analyzer`` without reading docs first.
+
+    Returns:
+        Path: Existing or newly created benchmark project path.
+
+    Raises:
+        ValueError: If template generation fails validation checks.
+        OSError: If project directory cannot be created/written.
+
+    Examples:
+        >>> project = _bootstrap_default_project()
+        >>> project.name
+        'benchmarks'
     """
     target = Path.cwd() / "benchmarks"
     if target.exists() and any(target.iterdir()):
@@ -83,6 +124,9 @@ def main(argv: Optional[list] = None) -> int:
 
     Returns:
         Exit code: 0 for success, non-zero for errors.
+
+    Raises:
+        SystemExit: Raised internally by ``argparse`` on parsing errors when it exits.
 
     Examples:
         >>> main(['--help'])
