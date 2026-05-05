@@ -52,8 +52,10 @@ def discover_user_benchmarks(benchmarks_dir: Path) -> RegistryMap:
 def load_user_registry(benchmarks_dir: Path) -> RegistryMap:
     """
     Load optional user registry file from benchmarks_dir/pgsi_registry.json.
-    Format:
-      {"benchmarks": {"algo-name": {"cpython": "...", ...}}}
+
+    Expected JSON structure::
+
+        {"benchmarks": {"algo-name": {"cpython": "...", ...}}}
     """
     root = Path(benchmarks_dir)
     registry_file = root / USER_REGISTRY_FILENAME

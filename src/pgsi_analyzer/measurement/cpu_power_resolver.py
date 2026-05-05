@@ -22,13 +22,6 @@ _FUZZY_THRESHOLD = 0.72
 class CpuPowerResolution:
     """Structured result returned by :func:`resolve_cpu_power`.
 
-    Attributes:
-        tdp_watts: Resolved thermal design power in watts used for energy estimation.
-        match_type: Strategy that produced the match (`exact`, `regex`, `fuzzy`, `default`).
-        matched_model: Dataset CPU model selected as the best candidate.
-        source: Data source identifier for audit/provenance reporting.
-        normalized_query: Normalized CPU string used during matching.
-
     Examples:
         >>> result = CpuPowerResolution(
         ...     tdp_watts=65.0,

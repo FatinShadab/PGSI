@@ -113,3 +113,10 @@ Reliability is supported by a broad test surface (CLI behavior, execution orches
 model computations, and audit integrity checks). Audit artifacts are emitted alongside results to support
 traceability and post-run diagnostics.
 
+Related Pages
+-------------
+
+- For first-run setup and command examples, see :doc:`getting_started`.
+- For benchmark interpretation guidance, see :doc:`user-guide/interpreting_results`.
+- For API-level module details, see :doc:`api/index`.
+

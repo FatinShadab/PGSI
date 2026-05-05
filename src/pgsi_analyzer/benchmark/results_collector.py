@@ -50,17 +50,15 @@ class ResultsCollector:
         """
         Group energy and time CSV paths by execution method.
 
-        execution_results is expected to be:
-          { algorithm: { method: { "energy_csv": Path, "time_csv": Path, ... } } }
+        ``execution_results`` is expected to be a nested mapping in this shape:
+        ``{algorithm: {method: {"energy_csv": Path, "time_csv": Path, ...}}}``.
 
         Returns:
-          {
-            "energy": { method: [dir, ...] },  # unique dirs containing energy CSVs
-            "time": { method: [dir, ...] },
-          }
+            Dict[str, Dict[str, List[Path]]]: Grouped CSV parent directories:
+            ``{"energy": {method: [Path, ...]}, "time": {method: [Path, ...]}}``.
 
         Raises:
-          AuditError: If a method is not in the registry whitelist (VALID_METHODS).
+            AuditError: If a method is not in the registry whitelist (``VALID_METHODS``).
         """
         energy_by_method: Dict[str, List[Path]] = {}
         time_by_method: Dict[str, List[Path]] = {}
