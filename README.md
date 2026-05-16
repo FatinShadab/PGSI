@@ -1,5 +1,10 @@
 # PGSI Analyzer: Python GreenScore and Sustainability Analyzer
 
+[![Docs](https://readthedocs.org/projects/pgsi/badge/?version=latest)](https://pgsi.readthedocs.io/en/latest/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](...)
+
+📘 Documentation: https://pgsi.readthedocs.io/en/latest/
+
 **PGSI Analyzer** is a comprehensive benchmarking and sustainability analysis tool for Python implementations. It measures and compares the **energy consumption**, **execution time**, **carbon footprint**, and overall **sustainability** of different Python execution methods using a novel composite metric called **GreenScore**.
 
 ## Project Overview
@@ -26,6 +31,20 @@ The tool executes a suite of **15 diverse CPU-bound algorithms**, each available
 - **py_compile**: Bytecode-compiled Python
 
 This results in **75 total benchmark combinations** (15 algorithms × 5 methods), providing comprehensive coverage of real-world Python workloads.
+
+## Documentation
+
+Full documentation is available at:
+
+https://pgsi.readthedocs.io/en/latest/
+
+It includes:
+- Installation guides
+- Benchmark development workflow
+- CLI reference
+- GUI usage
+- Architecture and audit documentation
+- Contribution guidelines
 
 ## Features
 
