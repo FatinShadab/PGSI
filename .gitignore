@@ -9,8 +9,13 @@ src/pgsi_analyzer/benchmarks/**/build/
 src/pgsi_analyzer/benchmarks/**/*.csv
 src/pgsi_analyzer/benchmarks/**/system_info*.json
 
-# C extensions
+# C extensions (built locally; do not ship in wheels)
 *.so
+*.dll
+*.pyd
+src/pgsi_analyzer/benchmarks/**/*.dll
+src/pgsi_analyzer/benchmarks/**/*.so
+src/pgsi_analyzer/benchmarks/**/*.pyd
 
 # Distribution / packaging
 .Python
@@ -190,4 +195,9 @@ dev_test/*
 
 dev/
 
-examples/
+# Local example runs and tool-path overrides (use example/.env.example)
+example/
+!example/.env.example
+
+# Accidental sdist unpack directories
+pgsi_analyzer-*/

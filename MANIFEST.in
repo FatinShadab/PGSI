@@ -1,4 +1,6 @@
 include README.md LICENSE
 global-exclude *.py[cod]
 global-exclude __pycache__
-
+global-exclude *.dll
+global-exclude *.so
+global-exclude *.pyd

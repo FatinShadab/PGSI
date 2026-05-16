@@ -9,6 +9,7 @@ description = "A comprehensive benchmarking and analysis tool for comparing ener
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     {name = "Md Fatin Shadab Turja"},
 ]
@@ -95,7 +96,8 @@ include = ["pgsi_analyzer*"]
 
 [tool.setuptools.package-data]
 "pgsi_analyzer" = ["config/*.json", "config/*.yaml", "config/*.csv"]
-"pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py", "**/*.dll", "**/*.so"]
+# Ship sources only; ctypes/Cython artifacts are built locally by benchmark/builder.py
+"pgsi_analyzer.benchmarks" = ["**/*.py", "**/*.pyx", "**/*.c", "**/*.txt", "**/setup.py", "**/*.md"]
 
 [tool.black]
 line-length = 100
