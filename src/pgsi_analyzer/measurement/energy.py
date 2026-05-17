@@ -60,11 +60,8 @@ except Exception:
     _codecarbon_tracker_cls = None
 
 
-def _create_codecarbon_tracker():
-    """Build a best-effort CodeCarbon tracker across versions."""
-    if not _codecarbon_available or _codecarbon_tracker_cls is None:
-        return None
-
+def _codecarbon_init_kwargs() -> dict:
+    """Build EmissionsTracker kwargs supported by the installed CodeCarbon version."""
     kwargs = {}
     try:
         signature = inspect.signature(_codecarbon_tracker_cls.__init__)
@@ -75,12 +72,61 @@ def _create_codecarbon_tracker():
             kwargs["save_to_logger"] = False
         if "log_level" in params:
             kwargs["log_level"] = "error"
+        if "allow_online_tracking" in params:
+            kwargs["allow_online_tracking"] = False
+        if "api_call_tracking" in params:
+            kwargs["api_call_tracking"] = False
     except Exception:
-        # If introspection fails, instantiate with defaults.
         kwargs = {}
+    return kwargs
 
+
+def _create_codecarbon_tracker():
+    """Build a best-effort CodeCarbon tracker across versions (including PyPy)."""
+    if not _codecarbon_available or _codecarbon_tracker_cls is None:
+        return None
+
+    kwargs = _codecarbon_init_kwargs()
+    attempts = [kwargs, {}]
+    seen = []
+    for attempt in attempts:
+        key = tuple(sorted(attempt.items()))
+        if key in seen:
+            continue
+        seen.append(key)
+        try:
+            return _codecarbon_tracker_cls(**attempt)
+        except Exception:
+            continue
+    return None
+
+
+def _start_codecarbon_tracker():
+    """
+    Start a CodeCarbon tracker, retrying with minimal options if needed.
+
+    Returns:
+        Tuple of (tracker or None, emissions_kg placeholder — always None at start).
+    """
+    tracker = _create_codecarbon_tracker()
+    if tracker is None:
+        return None
+
+    for candidate in (tracker, _codecarbon_tracker_cls()):
+        try:
+            candidate.start()
+            return candidate
+        except Exception:
+            continue
+    return None
+
+
+def _stop_codecarbon_tracker(tracker) -> object:
+    """Stop CodeCarbon tracker and return emissions when available."""
+    if tracker is None:
+        return None
     try:
-        return _codecarbon_tracker_cls(**kwargs)
+        return tracker.stop()
     except Exception:
         return None
 
@@ -203,33 +249,24 @@ def measure_energy_to_csv(
                         provenance_match_type = "exact"
                         provenance_matched_model = "intel_rapl"
                     else:
-                        # Use estimation fallback for non-RAPL environments
-                        # Measure CPU/wall time around function execution
+                        # Use estimation fallback for non-RAPL environments.
+                        # Prefer CodeCarbon in the active interpreter (CPython or PyPy),
+                        # then TDP model using wall time when process_time() is zero.
                         start_cpu_time = time.process_time()
-                        start_wall_time = time.time()
-                        tracker = _create_codecarbon_tracker()
+                        start_wall_time = time.perf_counter()
+                        tracker = _start_codecarbon_tracker()
                         if tracker is None:
                             _warn_codecarbon_missing_once()
-                        emissions_kg = None
-                        if tracker is not None:
-                            try:
-                                tracker.start()
-                            except Exception:
-                                tracker = None
 
                         result = func(*args, **kwargs)
 
-                        if tracker is not None:
-                            try:
-                                emissions_kg = tracker.stop()
-                            except Exception:
-                                emissions_kg = None
+                        emissions_kg = _stop_codecarbon_tracker(tracker)
                         end_cpu_time = time.process_time()
-                        end_wall_time = time.time()
-                        
+                        end_wall_time = time.perf_counter()
+
                         cpu_time = end_cpu_time - start_cpu_time
                         wall_time = end_wall_time - start_wall_time
-                        
+
                         # Prefer CodeCarbon-derived energy when available, else TDP estimation.
                         if tracker is not None:
                             estimated_energy, estimation_model, methodology = (
@@ -238,12 +275,14 @@ def measure_energy_to_csv(
                                     tracker=tracker,
                                     emissions_kg=emissions_kg,
                                     cpu_info=cpu_info,
+                                    wall_time_seconds=wall_time,
                                 )
                             )
                         else:
                             estimated_energy, estimation_model, methodology = estimate_energy(
                                 cpu_time,
-                                cpu_info
+                                cpu_info,
+                                wall_time_seconds=wall_time,
                             )
                         
                         package_energy = estimated_energy

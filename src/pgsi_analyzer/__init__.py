@@ -6,7 +6,7 @@ This package provides tools for measuring and analyzing the sustainability
 of different Python execution methods using the GreenScore metric.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Md Fatin Shadab Turja"
 __license__ = "MIT"
 

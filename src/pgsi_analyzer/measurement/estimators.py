@@ -21,6 +21,7 @@ except Exception:
 from ..platform.hardware import get_cpu_info
 from ..platform.detection import is_windows, is_macos
 from .cpu_power_resolver import resolve_cpu_power, DEFAULT_TDP_WATTS
+from .estimation_duration import effective_estimation_duration
 
 
 CPU_TDP_LOOKUP: Dict[str, float] = {"default": DEFAULT_TDP_WATTS}
@@ -65,7 +66,8 @@ def resolve_cpu_power_provenance(cpu_model: str) -> Dict[str, str]:
 
 def estimate_energy_cpu_time(
     cpu_time_seconds: float,
-    cpu_info: Optional[Dict[str, Any]] = None
+    cpu_info: Optional[Dict[str, Any]] = None,
+    wall_time_seconds: Optional[float] = None,
 ) -> Tuple[float, str, str]:
     """
     Estimate energy consumption based on CPU time and CPU model.
@@ -79,6 +81,8 @@ def estimate_energy_cpu_time(
     Args:
         cpu_time_seconds: CPU time spent executing (seconds)
         cpu_info: Optional CPU info dictionary. If None, will fetch automatically.
+        wall_time_seconds: Optional wall time from ``time.perf_counter()`` used when
+            CPU time is zero or when running on PyPy.
 
     Returns:
         Tuple of (energy in microjoules, estimation model name, methodology tag)
@@ -90,15 +94,15 @@ def estimate_energy_cpu_time(
     """
     if cpu_info is None:
         cpu_info = get_cpu_info()
+
+    duration_seconds, duration_basis = effective_estimation_duration(
+        cpu_time_seconds,
+        wall_time_seconds if wall_time_seconds is not None else 0.0,
+    )
     
     processor = cpu_info.get("processor", "Unknown")
     provenance = resolve_cpu_power_provenance(processor)
     tdp_watts = get_cpu_tdp(processor)
-    
-    # Handle edge case: very fast functions might have 0 CPU time
-    # Use a minimum time threshold (1 microsecond) to ensure non-zero energy
-    if cpu_time_seconds <= 0:
-        cpu_time_seconds = 1e-6  # 1 microsecond minimum
     
     # Power model: Average power = idle_power + (active_power - idle_power) * utilization
     # idle_power = 20% of TDP, active_power = TDP, utilization = 80%
@@ -109,13 +113,13 @@ def estimate_energy_cpu_time(
     average_power_watts = idle_power_watts + (active_power_watts - idle_power_watts) * utilization
     
     # Energy (Joules) = Power (Watts) × Time (seconds)
-    energy_joules = average_power_watts * cpu_time_seconds
+    energy_joules = average_power_watts * duration_seconds
     
     # Convert to microjoules (μJ)
     energy_microjoules = energy_joules * 1e6
     
     model_name = (
-        f"TDP-based (TDP={tdp_watts}W, util={utilization:.0%}, "
+        f"TDP-based ({duration_basis}, TDP={tdp_watts}W, util={utilization:.0%}, "
         f"match={provenance['match_type']}, source={provenance['source']})"
     )
     methodology = provenance["methodology"]
@@ -191,7 +195,8 @@ def estimate_energy_from_psutil(
 
 def estimate_windows(
     cpu_time_seconds: float,
-    cpu_info: Optional[Dict[str, Any]] = None
+    cpu_info: Optional[Dict[str, Any]] = None,
+    wall_time_seconds: Optional[float] = None,
 ) -> Tuple[float, str, str]:
     """
     Windows-specific energy estimation.
@@ -205,12 +210,13 @@ def estimate_windows(
     Returns:
         Tuple of (energy in microjoules, estimation model name, methodology tag)
     """
-    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
+    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info, wall_time_seconds)
 
 
 def estimate_macos(
     cpu_time_seconds: float,
-    cpu_info: Optional[Dict[str, Any]] = None
+    cpu_info: Optional[Dict[str, Any]] = None,
+    wall_time_seconds: Optional[float] = None,
 ) -> Tuple[float, str, str]:
     """
     macOS-specific energy estimation.
@@ -237,12 +243,13 @@ def estimate_macos(
     ):
         return estimate_energy_from_psutil(cpu_time_seconds, cpu_info)
     # Use standard CPU time estimation for Intel Macs or when psutil is unavailable
-    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
+    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info, wall_time_seconds)
 
 
 def estimate_energy(
     cpu_time_seconds: float,
-    cpu_info: Optional[Dict[str, Any]] = None
+    cpu_info: Optional[Dict[str, Any]] = None,
+    wall_time_seconds: Optional[float] = None,
 ) -> Tuple[float, str, str]:
     """
     Platform-agnostic energy estimation function.
@@ -252,6 +259,7 @@ def estimate_energy(
     Args:
         cpu_time_seconds: CPU time spent executing (seconds)
         cpu_info: Optional CPU info dictionary
+        wall_time_seconds: Optional wall time for PyPy / zero CPU-time fallback.
 
     Returns:
         Tuple of (energy in microjoules, estimation model name, methodology tag)
@@ -264,12 +272,12 @@ def estimate_energy(
         True
     """
     if is_windows():
-        return estimate_windows(cpu_time_seconds, cpu_info)
+        return estimate_windows(cpu_time_seconds, cpu_info, wall_time_seconds)
     elif is_macos():
-        return estimate_macos(cpu_time_seconds, cpu_info)
+        return estimate_macos(cpu_time_seconds, cpu_info, wall_time_seconds)
     else:
         # Fallback to CPU time-based estimation
-        return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
+        return estimate_energy_cpu_time(cpu_time_seconds, cpu_info, wall_time_seconds)
 
 
 def estimate_energy_from_codecarbon(
@@ -277,6 +285,7 @@ def estimate_energy_from_codecarbon(
     tracker: Optional[Any] = None,
     emissions_kg: Optional[float] = None,
     cpu_info: Optional[Dict[str, Any]] = None,
+    wall_time_seconds: Optional[float] = None,
 ) -> Tuple[float, str, str]:
     """
     Estimate energy using CodeCarbon tracker output when available.
@@ -310,6 +319,10 @@ def estimate_energy_from_codecarbon(
             METHODOLOGY_ESTIMATED_CODECARBON,
         )
 
-    # Fall back to deterministic CPU-time/TDP estimation.
-    return estimate_energy_cpu_time(cpu_time_seconds, cpu_info)
+    # Fall back to deterministic CPU-time/TDP estimation (wall time on PyPy / zero CPU time).
+    return estimate_energy_cpu_time(
+        cpu_time_seconds,
+        cpu_info,
+        wall_time_seconds=wall_time_seconds,
+    )
 

@@ -193,9 +193,11 @@ class TestEnergyMeasurement:
             result = sample_function()
         assert result == 42
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_measure_energy_to_csv_creates_directory(self, mock_pyrapl_module):
+    def test_measure_energy_to_csv_creates_directory(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that energy decorator creates output directory."""
         # Setup mock pyRAPL
         mock_measurement = MagicMock()
@@ -218,9 +220,11 @@ class TestEnergyMeasurement:
             assert folder_path.exists()
             assert folder_path.is_dir()
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_measure_energy_to_csv_creates_csv_file(self, mock_pyrapl_module):
+    def test_measure_energy_to_csv_creates_csv_file(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that energy decorator creates CSV file with correct format."""
         # Setup mock pyRAPL
         mock_measurement = MagicMock()
@@ -266,9 +270,11 @@ class TestEnergyMeasurement:
                 assert rows[1][5] == 'hardware'  # Measurement method
                 assert rows[1][6] == 'hardware_rapl_linux'  # Methodology (audit)
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_measure_energy_to_csv_creates_system_info_json(self, mock_pyrapl_module):
+    def test_measure_energy_to_csv_creates_system_info_json(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that energy decorator creates system info JSON file."""
         # Setup mock pyRAPL
         mock_measurement = MagicMock()
@@ -302,9 +308,11 @@ class TestEnergyMeasurement:
                 assert 'Test_Result_File' in system_info
                 assert 'Platform' in system_info
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_measure_energy_to_csv_runs_multiple_times(self, mock_pyrapl_module):
+    def test_measure_energy_to_csv_runs_multiple_times(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that energy decorator runs function multiple times."""
         # Setup mock pyRAPL
         mock_measurement = MagicMock()
@@ -339,9 +347,11 @@ class TestEnergyMeasurement:
                 rows = list(reader)
                 assert len(rows) == 4
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_measure_energy_to_csv_with_path_object(self, mock_pyrapl_module):
+    def test_measure_energy_to_csv_with_path_object(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that energy decorator accepts Path objects."""
         # Setup mock pyRAPL
         mock_measurement = MagicMock()
@@ -363,9 +373,11 @@ class TestEnergyMeasurement:
             
             assert (folder_path / "energy_test.csv").exists()
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_measure_energy_to_csv_handles_no_dram(self, mock_pyrapl_module):
+    def test_measure_energy_to_csv_handles_no_dram(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that energy decorator handles missing DRAM measurement."""
         # Setup mock pyRAPL with no DRAM
         mock_measurement = MagicMock()
@@ -405,9 +417,11 @@ class TestMeasurementIntegration:
         assert callable(measure_energy_to_csv)
         assert callable(measure_time_to_csv)
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_both_decorators_work_together(self, mock_pyrapl_module):
+    def test_both_decorators_work_together(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that both decorators can be used on the same function."""
         # Setup mock pyRAPL
         mock_measurement = MagicMock()
@@ -448,9 +462,11 @@ class TestMeasurementIntegration:
             assert isinstance(folder_path, Path)
             assert (folder_path / "time_test.csv").exists()
 
-    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', True)
+    @patch("pgsi_analyzer.measurement.energy.is_linux_intel")
+    @patch("pgsi_analyzer.measurement.energy._pyrapl_available", True)
     @patch('pgsi_analyzer.measurement.energy.pyRAPL')
-    def test_pathlib_usage_in_energy_decorator(self, mock_pyrapl_module):
+    def test_pathlib_usage_in_energy_decorator(self, mock_pyrapl_module, mock_is_linux_intel):
+        mock_is_linux_intel.return_value = True
         """Test that energy decorator uses pathlib.Path exclusively."""
         # Setup mock pyRAPL
         mock_measurement = MagicMock()

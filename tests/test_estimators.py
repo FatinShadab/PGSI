@@ -256,6 +256,29 @@ class TestCodeCarbonEstimation:
         assert energy > 0
         assert methodology in ("dataset_tdp", "generic_tdp")
 
+    def test_estimate_energy_from_codecarbon_fallback_uses_wall_when_cpu_zero(self):
+        tracker = MagicMock()
+        tracker.final_emissions_data = MagicMock()
+        tracker.final_emissions_data.energy_consumed = None
+
+        energy_floor, _, _ = estimate_energy_from_codecarbon(
+            cpu_time_seconds=0.0,
+            tracker=tracker,
+            emissions_kg=0.0,
+            cpu_info={"processor": "Unknown"},
+            wall_time_seconds=0.0,
+        )
+        energy_wall, model, _ = estimate_energy_from_codecarbon(
+            cpu_time_seconds=0.0,
+            tracker=tracker,
+            emissions_kg=0.0,
+            cpu_info={"processor": "Unknown"},
+            wall_time_seconds=0.05,
+        )
+
+        assert energy_wall > energy_floor
+        assert "wall_time" in model
+
     def test_resolve_cpu_power_provenance_raspberry_pi(self):
         provenance = resolve_cpu_power_provenance("ARM Cortex-A72 BCM2711")
         assert provenance["methodology"] in ("dataset_tdp", "generic_tdp")
