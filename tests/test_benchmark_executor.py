@@ -80,7 +80,7 @@ class TestPreparePyCompile:
         (benchmark_path / "__pycache__").mkdir(exist_ok=True)  # so glob("main*.pyc") runs without FileNotFoundError
         with patch('pathlib.Path.is_dir', return_value=True):
             result = prepare_py_compile(benchmark_path)
-            assert result == benchmark_path / "main.py"  # Falls back to .py if no .pyc found
+            assert result == benchmark_path / "main.py"
 
     @patch('pathlib.Path.exists')
     def test_prepare_py_compile_no_main_py(self, mock_exists, tmp_path):
@@ -93,6 +93,55 @@ class TestPreparePyCompile:
 
 class TestExecuteBenchmark:
     """Test execute_benchmark function."""
+
+    @patch("pgsi_analyzer.benchmark.executor.prepare_py_compile")
+    @patch("subprocess.run")
+    @patch("pathlib.Path.exists")
+    @patch("pathlib.Path.is_file")
+    @patch("pathlib.Path.is_dir")
+    @patch("pathlib.Path.iterdir")
+    @patch("pathlib.Path.glob")
+    def test_execute_benchmark_py_compile_runs_main_py_not_pyc(
+        self,
+        mock_glob,
+        mock_iterdir,
+        mock_isdir,
+        mock_isfile,
+        mock_exists,
+        mock_run,
+        mock_prepare,
+        tmp_path,
+    ):
+        """py_compile must execute main.py so CPython loads __pycache__ with normal semantics."""
+        mock_prepare.return_value = tmp_path / "main.py"
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        mock_isfile.return_value = True
+        mock_isdir.return_value = False
+        mock_exists.return_value = True
+        mock_iterdir.return_value = []
+        mock_glob.return_value = []
+
+        benchmark_path = tmp_path / "py_compile" / "main.py"
+        benchmark_path.parent.mkdir(parents=True)
+        benchmark_path.write_text("print('ok')", encoding="utf-8")
+        output_dir = tmp_path / "results"
+
+        try:
+            execute_benchmark(
+                algorithm="hanoi",
+                method="py_compile",
+                benchmark_path=benchmark_path,
+                runs=3,
+                output_dir=output_dir,
+                tool_paths=ToolPaths(python=Path(sys.executable)),
+            )
+        except Exception:
+            pass  # CSV discovery may fail; we only assert the subprocess command.
+
+        mock_prepare.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert cmd[1].endswith("main.py")
+        assert not cmd[1].endswith(".pyc")
 
     @patch('pgsi_analyzer.benchmark.executor.find_python_executable')
     @patch('subprocess.run')

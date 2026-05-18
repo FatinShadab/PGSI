@@ -17,6 +17,7 @@ from pgsi_analyzer.measurement.estimators import (
     estimate_windows,
     estimate_macos,
     estimate_energy,
+    CODECARBON_TDP_MAX_RATIO,
 )
 
 
@@ -224,22 +225,91 @@ class TestEstimationIntegration:
 class TestCodeCarbonEstimation:
     """Tests for CodeCarbon-based estimation helper."""
 
-    def test_estimate_energy_from_codecarbon_uses_tracker_energy(self):
+    def test_estimate_energy_from_codecarbon_uses_tracker_energy_when_in_band(self):
+        wall = 0.5
+        tdp_energy, _, _ = estimate_energy_cpu_time(
+            0.0, {"processor": "Intel Core i7"}, wall_time_seconds=wall
+        )
+        # Pick CC within [0.5, 2.0]× TDP band
+        cc_kwh = (tdp_energy * 1.25) / 3.6e12
         tracker = MagicMock()
         tracker.final_emissions_data = MagicMock()
-        tracker.final_emissions_data.energy_consumed = 0.001  # kWh
+        tracker.final_emissions_data.energy_consumed = cc_kwh
         tracker.final_emissions_data.country_name = "Testland"
 
         energy, model, methodology = estimate_energy_from_codecarbon(
-            cpu_time_seconds=0.5,
+            cpu_time_seconds=9.0,
             tracker=tracker,
             emissions_kg=0.0,
-            cpu_info={"processor": "Unknown"},
+            cpu_info={"processor": "Intel Core i7"},
+            wall_time_seconds=wall,
         )
 
-        assert energy == pytest.approx(3.6e9)
+        assert energy == pytest.approx(tdp_energy * 1.25)
         assert "CodeCarbon" in model
         assert methodology == "estimated_codecarbon"
+
+    def test_estimate_energy_from_codecarbon_floors_when_below_tdp(self):
+        """Tiny CodeCarbon readings (common on PyPy) must not undercut duration×TDP."""
+        tracker = MagicMock()
+        tracker.final_emissions_data = MagicMock()
+        tracker.final_emissions_data.energy_consumed = 1e-12  # kWh — positive but negligible
+
+        energy, model, methodology = estimate_energy_from_codecarbon(
+            cpu_time_seconds=0.0,
+            tracker=tracker,
+            emissions_kg=0.0,
+            cpu_info={"processor": "Intel Core i7"},
+            wall_time_seconds=0.5,
+        )
+
+        tdp_energy, _, tdp_meth = estimate_energy_cpu_time(
+            0.0,
+            {"processor": "Intel Core i7"},
+            wall_time_seconds=0.5,
+        )
+        assert energy == pytest.approx(tdp_energy)
+        assert "TDP floor" in model
+        assert methodology == tdp_meth
+
+    def test_estimate_energy_from_codecarbon_ceiling_when_above_tdp(self):
+        """Short ctypes/cython runs: CodeCarbon can over-report vs wall×TDP."""
+        wall = 0.036
+        tdp_energy, _, tdp_meth = estimate_energy_cpu_time(
+            9.8,
+            {"processor": "Intel Core i7"},
+            wall_time_seconds=wall,
+        )
+        # Simulate inflated CodeCarbon (~535M uJ for ~2M uJ TDP)
+        cc_kwh = (tdp_energy * 100) / 3.6e12
+        tracker = MagicMock()
+        tracker.final_emissions_data = MagicMock()
+        tracker.final_emissions_data.energy_consumed = cc_kwh
+
+        energy, model, methodology = estimate_energy_from_codecarbon(
+            cpu_time_seconds=9.8,
+            tracker=tracker,
+            emissions_kg=0.0,
+            cpu_info={"processor": "Intel Core i7"},
+            wall_time_seconds=wall,
+        )
+
+        assert energy == pytest.approx(tdp_energy)
+        assert "TDP ceiling" in model
+        assert methodology == tdp_meth
+        assert (tdp_energy * CODECARBON_TDP_MAX_RATIO) < tdp_energy * 100
+
+    def test_fast_run_energy_scales_with_wall_not_cpu(self):
+        """Energy for a 36ms wall run must not use multi-second process_time."""
+        wall = 0.036
+        energy_wall, model, _ = estimate_energy_cpu_time(
+            9.8, {"processor": "Intel Core i7"}, wall_time_seconds=wall
+        )
+        energy_cpu, _, _ = estimate_energy_cpu_time(
+            9.8, {"processor": "Intel Core i7"}, wall_time_seconds=0.0
+        )
+        assert "wall_time" in model
+        assert energy_wall < energy_cpu * 0.1
 
     def test_estimate_energy_from_codecarbon_falls_back_when_missing_energy(self):
         tracker = MagicMock()

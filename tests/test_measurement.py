@@ -115,8 +115,8 @@ class TestTimeMeasurement:
             
             result = sample_function()
             
-            assert result == 5
-            assert call_count['count'] == 5
+            assert result == 6  # 1 warmup + 5 measured runs
+            assert call_count['count'] == 6
             
             # Verify CSV has 6 rows (header + 5 data rows)
             with csv_file.open('r', encoding='utf-8') as f:
@@ -335,10 +335,10 @@ class TestEnergyMeasurement:
             
             result = sample_function()
             
-            assert result == 3
-            assert call_count['count'] == 3
+            assert result == 4  # 1 warmup + 3 measured runs
+            assert call_count['count'] == 4
             
-            # Verify pyRAPL.Measurement was called 3 times
+            # Verify pyRAPL.Measurement was called 3 times (warmup is not measured)
             assert mock_pyrapl_module.Measurement.call_count == 3
             
             # Verify CSV has 4 rows (header + 3 data rows)

@@ -13,6 +13,11 @@ METHODOLOGY_DATASET_TDP = "dataset_tdp"
 METHODOLOGY_GENERIC_TDP = "generic_tdp"
 METHODOLOGY_ESTIMATED_CODECARBON = "estimated_codecarbon"
 
+# Keep CodeCarbon only when it is within this band of wall×TDP (avoids PyPy under-
+# report and CPython/ctypes/cython over-report on short benchmark runs).
+CODECARBON_TDP_MIN_RATIO = 0.5
+CODECARBON_TDP_MAX_RATIO = 2.0
+
 try:
     import psutil
 except Exception:
@@ -292,7 +297,17 @@ def estimate_energy_from_codecarbon(
 
     If tracker metadata is insufficient to recover energy directly, this falls
     back to the CPU-TDP model to keep behavior deterministic across platforms.
+
+    When CodeCarbon is outside a plausible band around wall×TDP (under on PyPy,
+    over on short ctypes/cython/cpython runs), the wall×TDP estimate is used so
+    energy stays consistent with measured execution time.
     """
+    tdp_energy, tdp_model, tdp_methodology = estimate_energy_cpu_time(
+        cpu_time_seconds,
+        cpu_info,
+        wall_time_seconds=wall_time_seconds,
+    )
+
     energy_kwh = None
     model_name = "CodeCarbon-based"
 
@@ -313,16 +328,26 @@ def estimate_energy_from_codecarbon(
                     energy_kwh = getattr(total_energy, "kWh", None)
 
     if isinstance(energy_kwh, (int, float)) and energy_kwh > 0:
+        cc_energy_uj = float(energy_kwh) * 3.6e12  # 1 kWh = 3.6e6 J = 3.6e12 uJ
+        if tdp_energy > 0:
+            ratio = cc_energy_uj / tdp_energy
+            if ratio < CODECARBON_TDP_MIN_RATIO:
+                return (
+                    tdp_energy,
+                    f"{tdp_model} (CodeCarbon below TDP floor)",
+                    tdp_methodology,
+                )
+            if ratio > CODECARBON_TDP_MAX_RATIO:
+                return (
+                    tdp_energy,
+                    f"{tdp_model} (CodeCarbon above TDP ceiling)",
+                    tdp_methodology,
+                )
         return (
-            float(energy_kwh) * 3.6e12,  # 1 kWh = 3.6e6 J = 3.6e12 uJ
+            cc_energy_uj,
             model_name,
             METHODOLOGY_ESTIMATED_CODECARBON,
         )
 
-    # Fall back to deterministic CPU-time/TDP estimation (wall time on PyPy / zero CPU time).
-    return estimate_energy_cpu_time(
-        cpu_time_seconds,
-        cpu_info,
-        wall_time_seconds=wall_time_seconds,
-    )
+    return tdp_energy, tdp_model, tdp_methodology
 

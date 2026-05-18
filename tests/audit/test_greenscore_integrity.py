@@ -170,8 +170,9 @@ class TestGreenScoreStress:
             "m2_CO2e_g": [0.04, 0.05, 0.06],
         })
         result = calculate_greenscore(energy_df, time_df, carbon_df)
-        for col in ["energy_mean", "time_mean", "carbon_mean"]:
+        for col in ["energy_norm_mean", "time_norm_mean", "carbon_norm_mean"]:
             assert (result[col] >= 0).all() and (result[col] <= 1).all()
+        assert (result["energy_uJ_mean"] > 0).all()
 
 
 class TestMethodologyConsistency:

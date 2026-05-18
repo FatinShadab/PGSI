@@ -17,10 +17,16 @@ class TestEffectiveEstimationDuration:
         assert basis == "wall_time"
         assert duration == pytest.approx(0.5)
 
-    def test_positive_cpu_uses_cpu_on_cpython(self):
+    def test_positive_cpu_uses_wall_when_wall_available(self):
         duration, basis = effective_estimation_duration(0.25, 0.5)
-        assert basis == "cpu_time"
-        assert duration == pytest.approx(0.25)
+        assert basis == "wall_time"
+        assert duration == pytest.approx(0.5)
+
+    def test_inflated_cpu_uses_wall_for_ctypes_like_runs(self):
+        """Native extensions can report cpu_time >> wall; energy must follow wall."""
+        duration, basis = effective_estimation_duration(9.8, 0.036)
+        assert basis == "wall_time"
+        assert duration == pytest.approx(0.036)
 
     @patch("pgsi_analyzer.measurement.estimation_duration.is_pypy_runtime", return_value=True)
     def test_pypy_prefers_wall_when_available(self, _mock_pypy):

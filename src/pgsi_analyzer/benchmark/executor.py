@@ -199,13 +199,16 @@ def find_python_executable(method: str, tool_paths: Optional[ToolPaths] = None) 
 def prepare_py_compile(benchmark_path: Path, tool_paths: Optional[ToolPaths] = None) -> Path:
     """
     Pre-compile Python file to .pyc for py_compile method.
-    
+
+    Callers should execute ``main.py`` afterward (not the ``.pyc`` path directly) so
+    CPython loads bytecode from ``__pycache__`` with normal script semantics.
+
     Args:
         benchmark_path: Path to main.py file or to the py_compile directory
         tool_paths: Optional ToolPaths configuration for Python executable
-        
+
     Returns:
-        Path to compiled .pyc file (or main.py if compilation fails)
+        Path to main.py (always — use this for subprocess execution)
     """
     if benchmark_path.is_file() and benchmark_path.name == "main.py":
         bench_dir = benchmark_path.parent
@@ -227,19 +230,6 @@ def prepare_py_compile(benchmark_path: Path, tool_paths: Optional[ToolPaths] = N
         text=True,
     )
     
-    if result.returncode != 0:
-        # Fallback: use .py file directly
-        return main_py
-    
-    # Find the compiled .pyc file
-    # Python 3.8+ uses __pycache__ directory
-    pycache = bench_dir / "__pycache__"
-    if pycache.exists():
-        pyc_files = list(pycache.glob("main*.pyc"))
-        if pyc_files:
-            return pyc_files[0]
-    
-    # Fallback to .py
     return main_py
 
 
@@ -282,15 +272,16 @@ def execute_benchmark(
     
     # Determine what to execute
     if method == "py_compile":
-        # Pre-compile and execute .pyc
-        exec_path = prepare_py_compile(benchmark_path, tool_paths)
-        python_exe = str(tool_paths.python) if tool_paths else sys.executable
-        if exec_path.suffix == ".pyc":
-            # Execute .pyc directly
-            exec_args = [python_exe, str(exec_path)]
+        # Pre-compile to __pycache__, then run main.py (CPython loads the .pyc automatically).
+        # Do not execute ``python path/__pycache__/main.pyc`` directly: that sets sys.path[0]
+        # to __pycache__ and skews imports/timing vs cpython and manual measurements.
+        if benchmark_path.is_file() and benchmark_path.name == "main.py":
+            main_py = benchmark_path
         else:
-            # Fallback to .py
-            exec_args = [python_exe, str(exec_path)]
+            main_py = benchmark_path / "main.py"
+        prepare_py_compile(main_py.parent if main_py.is_file() else benchmark_path, tool_paths)
+        python_exe = str(tool_paths.python) if tool_paths else sys.executable
+        exec_args = [python_exe, str(main_py)]
     elif benchmark_path.is_file() and benchmark_path.name == "main.py":
         # Direct main.py execution
         python_exe = find_python_executable(method, tool_paths)

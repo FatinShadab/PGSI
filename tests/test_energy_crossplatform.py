@@ -269,6 +269,32 @@ class TestCrossPlatformEnergy:
 
     @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
     @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
+    def test_energy_decorator_warmup_when_n_gt_one(self, mock_is_linux_intel):
+        """First run is warmup (compile/load); only n runs are written to CSV."""
+        mock_is_linux_intel.return_value = False
+        calls = []
+
+        with TemporaryDirectory() as tmpdir:
+            folder_path = Path(tmpdir) / "energy_test"
+
+            @measure_energy_to_csv(n=3, csv_filename="test", folder_name=folder_path)
+            def sample_function():
+                calls.append(1)
+                return len(calls)
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                result = sample_function()
+
+            assert result == 4
+            assert len(calls) == 4
+            csv_file = folder_path / "energy_test.csv"
+            with csv_file.open('r', encoding='utf-8') as f:
+                rows = list(csv.reader(f))
+            assert len(rows) == 4  # header + 3 measured rows
+
+    @patch('pgsi_analyzer.measurement.energy.is_linux_intel')
+    @patch('pgsi_analyzer.measurement.energy._pyrapl_available', False)
     def test_energy_decorator_dram_zero_on_estimation(self, mock_is_linux_intel):
         """Test that DRAM energy is 0 when using estimation."""
         mock_is_linux_intel.return_value = False

@@ -26,8 +26,10 @@ def effective_estimation_duration(
     """
     Choose a duration basis for TDP-based energy estimation.
 
-    On PyPy, prefer wall-clock time because ``process_time()`` is often zero.
-    Otherwise use CPU time when positive, then wall time, then a tiny floor.
+    Always prefers wall-clock time when available so energy scales with the same
+    elapsed interval as the time benchmark (``execution_time (s)``). ``process_time()``
+    is unreliable on PyPy (often ~0) and can be far larger than wall for native
+    ``ctypes``/``cython`` workloads on multi-core hosts.
 
     Args:
         cpu_time_seconds: Elapsed process CPU time from ``time.process_time()``.
@@ -40,16 +42,8 @@ def effective_estimation_duration(
     cpu = max(0.0, float(cpu_time_seconds or 0.0))
     wall = max(0.0, float(wall_time_seconds or 0.0))
 
-    if is_pypy_runtime():
-        if wall > 0:
-            return wall, "wall_time"
-        if cpu > 0:
-            return cpu, "cpu_time"
-        return _MINIMUM_DURATION_SECONDS, "minimum_floor"
-
-    if cpu <= 0:
-        if wall > 0:
-            return wall, "wall_time"
-        return _MINIMUM_DURATION_SECONDS, "minimum_floor"
-
-    return cpu, "cpu_time"
+    if wall > 0:
+        return wall, "wall_time"
+    if cpu > 0:
+        return cpu, "cpu_time"
+    return _MINIMUM_DURATION_SECONDS, "minimum_floor"

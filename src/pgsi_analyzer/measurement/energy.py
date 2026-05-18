@@ -231,6 +231,11 @@ def measure_energy_to_csv(
                     'provenance_matched_model',
                 ])
 
+                # Warmup: cython/ctypes compile on first execution; energy runs before
+                # time_benchmark in benchmark scripts, so run 1 must not be averaged.
+                if n > 1:
+                    func(*args, **kwargs)
+
                 # Run the function n times and log energy usage
                 estimation_model = None
                 for i in range(1, n + 1):
@@ -254,36 +259,21 @@ def measure_energy_to_csv(
                         # then TDP model using wall time when process_time() is zero.
                         start_cpu_time = time.process_time()
                         start_wall_time = time.perf_counter()
-                        tracker = _start_codecarbon_tracker()
-                        if tracker is None:
-                            _warn_codecarbon_missing_once()
-
                         result = func(*args, **kwargs)
-
-                        emissions_kg = _stop_codecarbon_tracker(tracker)
                         end_cpu_time = time.process_time()
                         end_wall_time = time.perf_counter()
 
                         cpu_time = end_cpu_time - start_cpu_time
                         wall_time = end_wall_time - start_wall_time
 
-                        # Prefer CodeCarbon-derived energy when available, else TDP estimation.
-                        if tracker is not None:
-                            estimated_energy, estimation_model, methodology = (
-                                estimate_energy_from_codecarbon(
-                                    cpu_time,
-                                    tracker=tracker,
-                                    emissions_kg=emissions_kg,
-                                    cpu_info=cpu_info,
-                                    wall_time_seconds=wall_time,
-                                )
-                            )
-                        else:
-                            estimated_energy, estimation_model, methodology = estimate_energy(
-                                cpu_time,
-                                cpu_info,
-                                wall_time_seconds=wall_time,
-                            )
+                        # Wall×TDP estimation (aligned with time benchmark duration).
+                        # CodeCarbon is not used here: it often disagrees with wall time on
+                        # PyPy (under) and ctypes/cython (over), especially before warmup.
+                        estimated_energy, estimation_model, methodology = estimate_energy(
+                            cpu_time,
+                            cpu_info,
+                            wall_time_seconds=wall_time,
+                        )
                         
                         package_energy = estimated_energy
                         dram_energy = 0  # DRAM estimation not implemented
@@ -293,10 +283,9 @@ def measure_energy_to_csv(
                             "match_type": "exact",
                             "matched_model": "codecarbon_tracker_energy",
                         }
-                        if methodology != "estimated_codecarbon":
-                            provenance = resolve_cpu_power_provenance(
-                                (cpu_info or {}).get("processor", "Unknown")
-                            )
+                        provenance = resolve_cpu_power_provenance(
+                            (cpu_info or {}).get("processor", "Unknown")
+                        )
                         provenance_source = provenance["source"]
                         provenance_match_type = provenance["match_type"]
                         provenance_matched_model = provenance["matched_model"]

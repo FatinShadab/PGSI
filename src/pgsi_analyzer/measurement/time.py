@@ -117,6 +117,11 @@ def measure_time_to_csv(
                     'execution_time (s)'
                 ])
 
+                # Warmup (same rationale as measure_energy_to_csv): first run can include
+                # compile/import cost; time_benchmark runs after energy in benchmark scripts.
+                if n > 1:
+                    func(*args, **kwargs)
+
                 # Run the function n times and log execution time
                 for i in range(1, n + 1):
                     start_time = time.time()
