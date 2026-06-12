@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+paper/
+.paper/
+
 **/energy_benchmark/
 **/time_benchmark/
 src/pgsi_analyzer/benchmarks/**/build/
