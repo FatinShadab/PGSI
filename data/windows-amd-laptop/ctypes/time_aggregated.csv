@@ -1,0 +1,16 @@
+filename,execution_time (s)
+time_binary_trees_ctypes,0.007125997543334903
+time_fannkuch_redux_ctypes,0.00024481296539301
+time_fasta_ctypes,0.010563359260559037
+time_hanoi_ctypes,0.6854353475570679
+time_knn_ctypes,0.00192957878112788
+time_K_Nucleotide_ctypes,0.010677776336669876
+time_mandelbrot_ctypes,0.37751434326171873
+time_nbody_ctypes,0.0012734413146972161
+time_n_queens_ctypes,1.5795571899414063
+time_pi_digits_ctypes,0.010410327911376905
+time_regex_redux_ctypes,0.013145084381103464
+time_reverse_complement_ctypes,1.7499923706054687e-06
+time_sieve_ctypes,4.182338714599609e-05
+time_spectral_norm_ctypes,1.7547607421875e-06
+time_strassen_ctypes,2.6302337646484373e-05

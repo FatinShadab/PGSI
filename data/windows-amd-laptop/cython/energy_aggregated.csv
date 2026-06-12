@@ -1,0 +1,16 @@
+filename,average_package (uJ),methodology
+energy_binary_trees_cython,277695.9276109992,generic_tdp
+energy_fannkuch_redux_cython,325520.50439600134,generic_tdp
+energy_fasta_cython,566280.9516113775,generic_tdp
+energy_hanoi_cython,6677511.968364415,generic_tdp
+energy_knn_cython,273922.08480546833,generic_tdp
+energy_K_Nucleotide_cython,583224.7512053582,generic_tdp
+energy_mandelbrot_cython,9023771.2655855,generic_tdp
+energy_nbody_cython,83928.82676777663,generic_tdp
+energy_n_queens_cython,116688132.28801414,generic_tdp
+energy_pi_digits_cython,565893.073149986,generic_tdp
+energy_regex_redux_cython,718548.1212479934,generic_tdp
+energy_reverse_complement_cython,351.07801159028895,generic_tdp
+energy_sieve_cython,4932.236438558903,generic_tdp
+energy_spectral_norm_cython,275.184021651512,generic_tdp
+energy_strassen_cython,2151.6767926805187,generic_tdp

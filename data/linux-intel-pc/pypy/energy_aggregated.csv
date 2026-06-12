@@ -1,0 +1,16 @@
+filename,average_package (uJ),methodology
+energy_nbody_pypy,31334.16,hardware_rapl_linux
+energy_knn_pypy,34825.34,hardware_rapl_linux
+energy_pi_digits_pypy,21939.56,hardware_rapl_linux
+energy_binary_trees_pypy,29341.98,hardware_rapl_linux
+energy_spectral_norm_pypy,1708.98,hardware_rapl_linux
+energy_regex_redux_pypy,8177.5,hardware_rapl_linux
+energy_fasta_pypy,20911.88,hardware_rapl_linux
+energy_mandelbrot_pypy,8710420.84,hardware_rapl_linux
+energy_sieve_pypy,2938.22,hardware_rapl_linux
+energy_K_Nucleotide_pypy,22171.58,hardware_rapl_linux
+energy_fannkuch_redux_pypy,31929.88,hardware_rapl_linux
+energy_strassen_pypy,0.0,hardware_rapl_linux
+energy_hanoi_pypy,753919.0,hardware_rapl_linux
+energy_n_queens_pypy,21502966.16,hardware_rapl_linux
+energy_reverse_complement_pypy,0.0,hardware_rapl_linux

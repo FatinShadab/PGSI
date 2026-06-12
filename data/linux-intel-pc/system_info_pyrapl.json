@@ -1,0 +1,12 @@
+{
+    "CPU": "x86_64",
+    "RAM_GB": 15.39,
+    "OS": "Linux 6.8.0-111-generic",
+    "Architecture": "x86_64",
+    "Test_Result_File": "energy_benchmark/energy_binary_trees_cpython.csv",
+    "Platform": "linux",
+    "Cores_Physical": 12,
+    "Cores_Logical": 20,
+    "measurement_method": "hardware",
+    "platform": "linux"
+}

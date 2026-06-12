@@ -68,6 +68,8 @@ energy = [
 analysis = [
     "scipy>=1.10.0",
     "statsmodels>=0.14.0",
+    "seaborn>=0.13.0",
+    "plotly>=5.18.0",
 ]
 # Better CPU info when psutil is unavailable (e.g. PyPy). Works on CPython and PyPy.
 pypy = [

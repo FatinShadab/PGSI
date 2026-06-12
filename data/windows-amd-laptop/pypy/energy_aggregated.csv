@@ -1,0 +1,16 @@
+filename,average_package (uJ),methodology
+energy_binary_trees_pypy,71204.18761725887,generic_tdp
+energy_fannkuch_redux_pypy,88633.92716916862,generic_tdp
+energy_fasta_pypy,703215.7860092121,generic_tdp
+energy_hanoi_pypy,4830869.8619720815,generic_tdp
+energy_knn_pypy,98433.4260362084,generic_tdp
+energy_K_Nucleotide_pypy,771099.4199606648,generic_tdp
+energy_mandelbrot_pypy,28058288.84039933,generic_tdp
+energy_nbody_pypy,193341.11163328632,generic_tdp
+energy_n_queens_pypy,63458794.30803994,generic_tdp
+energy_pi_digits_pypy,680911.5768057236,generic_tdp
+energy_regex_redux_pypy,38587.23957955954,generic_tdp
+energy_reverse_complement_pypy,874.8012268042658,generic_tdp
+energy_sieve_pypy,8455.902030109428,generic_tdp
+energy_spectral_norm_pypy,4754.131169524044,generic_tdp
+energy_strassen_pypy,2832.648029347183,generic_tdp

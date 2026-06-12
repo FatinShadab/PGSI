@@ -1,0 +1,16 @@
+filename,average_package (uJ),methodology
+energy_binary_trees_ctypes,378970.51915866905,generic_tdp
+energy_fannkuch_redux_ctypes,17449.941586557543,generic_tdp
+energy_fasta_ctypes,569433.6647989112,generic_tdp
+energy_hanoi_ctypes,40881426.00358805,generic_tdp
+energy_knn_ctypes,117288.11636916362,generic_tdp
+energy_K_Nucleotide_ctypes,572984.5211909269,generic_tdp
+energy_mandelbrot_ctypes,20558076.084029485,generic_tdp
+energy_nbody_ctypes,80292.68516993034,generic_tdp
+energy_n_queens_ctypes,85254341.7179721,generic_tdp
+energy_pi_digits_ctypes,568956.4607644861,generic_tdp
+energy_regex_redux_ctypes,708147.3671792191,generic_tdp
+energy_reverse_complement_ctypes,1496.6952267859597,generic_tdp
+energy_sieve_ctypes,6018.01196357701,generic_tdp
+energy_spectral_norm_ctypes,1433.686807838967,generic_tdp
+energy_strassen_ctypes,6632.480394415325,generic_tdp

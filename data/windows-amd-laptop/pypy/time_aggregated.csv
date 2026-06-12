@@ -1,0 +1,16 @@
+filename,execution_time (s)
+time_binary_trees_pypy,0.0023801422119140115
+time_fannkuch_redux_pypy,0.001333093643188466
+time_fasta_pypy,0.015430045127868601
+time_hanoi_pypy,0.08391082763671871
+time_knn_pypy,0.0015666246414184498
+time_K_Nucleotide_pypy,0.015602369308471637
+time_mandelbrot_pypy,0.509237904548645
+time_nbody_pypy,0.001421542167663564
+time_n_queens_pypy,1.160840449333191
+time_pi_digits_pypy,0.015489344596862747
+time_regex_redux_pypy,0.000286607742309556
+time_reverse_complement_pypy,0.0
+time_sieve_pypy,0.000139946937561028
+time_spectral_norm_pypy,7.0252418518064e-05
+time_strassen_pypy,2.0275115966796e-05

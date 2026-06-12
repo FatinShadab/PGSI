@@ -1,0 +1,16 @@
+algorithm,cpython_CO2e_g,ctypes_CO2e_g,cython_CO2e_g,py_compile_CO2e_g,pypy_CO2e_g
+energy_K_Nucleotide,0.000278,0.000272,0.000277,0.000277,0.000366
+energy_binary_trees,0.000706,0.00018,0.000132,0.000705,3.4e-05
+energy_fannkuch_redux,0.000193,8e-06,0.000155,0.000201,4.2e-05
+energy_fasta,0.000269,0.00027,0.000269,0.000271,0.000334
+energy_hanoi,0.003192,0.019419,0.003172,0.00318,0.002295
+energy_knn,0.000165,5.6e-05,0.00013,0.000168,4.7e-05
+energy_mandelbrot,0.086741,0.009765,0.004286,0.086951,0.013328
+energy_n_queens,0.140349,0.040496,0.055427,0.14058,0.030143
+energy_nbody,5.3e-05,3.8e-05,4e-05,5.5e-05,9.2e-05
+energy_pi_digits,0.000273,0.00027,0.000269,0.000274,0.000323
+energy_regex_redux,0.000278,0.000336,0.000341,0.000278,1.8e-05
+energy_reverse_complement,0.0,1e-06,0.0,0.0,0.0
+energy_sieve,4e-06,3e-06,2e-06,4e-06,4e-06
+energy_spectral_norm,1e-06,1e-06,0.0,1e-06,2e-06
+energy_strassen,1e-06,3e-06,1e-06,1e-06,1e-06

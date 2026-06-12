@@ -1,0 +1,16 @@
+filename,average_package (uJ),methodology
+energy_spectral_norm_pycompile,0.0,hardware_rapl_linux
+energy_pi_digits_pycompile,25400.28,hardware_rapl_linux
+energy_nbody_py_compile,26652.76,hardware_rapl_linux
+energy_K_Nucleotide_pycompile,23575.36,hardware_rapl_linux
+energy_fasta_pycompile,20382.02,hardware_rapl_linux
+energy_mandelbrot_pycompile,48905466.82,hardware_rapl_linux
+energy_knn_pycompile,146919.78,hardware_rapl_linux
+energy_n_queens_pycompile,121751176.34,hardware_rapl_linux
+energy_regex_redux_pycompile,23957.44,hardware_rapl_linux
+energy_fannkuch_redux_pycompile,146015.24,hardware_rapl_linux
+energy_hanoi_pycompile,1201405.64,hardware_rapl_linux
+energy_sieve_pycompile,2576.9,hardware_rapl_linux
+energy_strassen_pycompile,1129.14,hardware_rapl_linux
+energy_reverse_complement_pycompile,985.1,hardware_rapl_linux
+energy_binary_trees_pycompile,1125215.62,hardware_rapl_linux

@@ -1,0 +1,16 @@
+filename,average_package (uJ),methodology
+energy_hanoi_cython,987947.9,hardware_rapl_linux
+energy_fasta_cython,20053.64,hardware_rapl_linux
+energy_strassen_cython,0.0,hardware_rapl_linux
+energy_regex_redux_cython,24398.14,hardware_rapl_linux
+energy_reverse_complement_cython,0.0,hardware_rapl_linux
+energy_n_queens_cython,40442748.02,hardware_rapl_linux
+energy_mandelbrot_cython,2954954.6,hardware_rapl_linux
+energy_fannkuch_redux_cython,107349.58,hardware_rapl_linux
+energy_K_Nucleotide_cython,24932.8,hardware_rapl_linux
+energy_knn_cython,91095.98,hardware_rapl_linux
+energy_pi_digits_cython,21104.7,hardware_rapl_linux
+energy_sieve_cython,1031.48,hardware_rapl_linux
+energy_binary_trees_cython,80928.76,hardware_rapl_linux
+energy_nbody_cython,17712.36,hardware_rapl_linux
+energy_spectral_norm_cython,0.0,hardware_rapl_linux

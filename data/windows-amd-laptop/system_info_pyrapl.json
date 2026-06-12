@@ -1,0 +1,17 @@
+{
+    "CPU": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "RAM_GB": 13.85,
+    "OS": "Windows 11",
+    "Architecture": "AMD64",
+    "Test_Result_File": "energy_benchmark\\energy_binary_trees_cpython.csv",
+    "Platform": "windows",
+    "Cores_Physical": 6,
+    "Cores_Logical": 12,
+    "measurement_method": "estimation",
+    "platform": "windows",
+    "estimation_model": "TDP-based (wall_time, TDP=65.0W, util=80%, match=default, source=generic_tdp_default)",
+    "methodology": "generic_tdp",
+    "provenance_source": "generic_tdp_default",
+    "provenance_match_type": "default",
+    "provenance_matched_model": "generic_default"
+}

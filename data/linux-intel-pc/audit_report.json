@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-05-19T11:35:13.933869",
+  "path_entries": [
+    {
+      "method": "cpython",
+      "requested_path": "/usr/bin/python3.10",
+      "resolved_path": "/usr/bin/python3.10",
+      "runtime_reported_path": "/home/student/Documents/pgsi-test-data/env/bin/python3",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "ctypes",
+      "requested_path": "/usr/bin/python3.10",
+      "resolved_path": "/usr/bin/python3.10",
+      "runtime_reported_path": "/home/student/Documents/pgsi-test-data/env/bin/python3",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "cython",
+      "requested_path": "/usr/bin/python3.10",
+      "resolved_path": "/usr/bin/python3.10",
+      "runtime_reported_path": "/home/student/Documents/pgsi-test-data/env/bin/python3",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "py_compile",
+      "requested_path": "/usr/bin/python3.10",
+      "resolved_path": "/usr/bin/python3.10",
+      "runtime_reported_path": "/home/student/Documents/pgsi-test-data/env/bin/python3",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "pypy",
+      "requested_path": "/home/student/Downloads/pypy3.11-v7.3.22-linux64/bin/pypy3.11",
+      "resolved_path": "/home/student/Downloads/pypy3.11-v7.3.22-linux64/bin/pypy3.11",
+      "runtime_reported_path": "/home/student/Downloads/pypy3.11-v7.3.22-linux64/bin/pypy3",
+      "path_source": "env",
+      "path_integrity": true
+    }
+  ],
+  "severity": "NONE",
+  "data_methodology_summary": {
+    "total_points": 75,
+    "hardware_percentage": 100.0,
+    "estimation_percentage": 0.0
+  },
+  "normalization_bounds": {
+    "energy": {
+      "min": 0.0,
+      "max": 122016880.02
+    },
+    "time": {
+      "min": 3.099441528320313e-07,
+      "max": 3.484452528953552
+    },
+    "carbon": {
+      "min": 0.0,
+      "max": 0.057958
+    }
+  }
+}

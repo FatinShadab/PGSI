@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-05-19T03:32:42.749064",
+  "path_entries": [
+    {
+      "method": "cpython",
+      "requested_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "resolved_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "runtime_reported_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "ctypes",
+      "requested_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "resolved_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "runtime_reported_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "cython",
+      "requested_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "resolved_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "runtime_reported_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "py_compile",
+      "requested_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "resolved_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "runtime_reported_path": "D:\\GITHUB\\ME\\PGSI\\env\\Scripts\\python.exe",
+      "path_source": "env",
+      "path_integrity": true
+    },
+    {
+      "method": "pypy",
+      "requested_path": "C:\\Users\\USER\\Downloads\\pypy3.11-v7.3.22-win64\\pypy3.11-v7.3.22-win64\\pypy.exe",
+      "resolved_path": "C:\\Users\\USER\\Downloads\\pypy3.11-v7.3.22-win64\\pypy3.11-v7.3.22-win64\\pypy.exe",
+      "runtime_reported_path": "C:\\Users\\USER\\Downloads\\pypy3.11-v7.3.22-win64\\pypy3.11-v7.3.22-win64\\pypy.exe",
+      "path_source": "env",
+      "path_integrity": true
+    }
+  ],
+  "severity": "NONE",
+  "data_methodology_summary": {
+    "total_points": 75,
+    "hardware_percentage": 0.0,
+    "estimation_percentage": 100.0
+  },
+  "normalization_bounds": {
+    "energy": {
+      "min": 275.184021651512,
+      "max": 295957050.26164085
+    },
+    "time": {
+      "min": 0.0,
+      "max": 5.44147894859314
+    },
+    "carbon": {
+      "min": 0.0,
+      "max": 0.14058
+    }
+  }
+}

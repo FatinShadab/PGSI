@@ -1,0 +1,16 @@
+filename,execution_time (s)
+time_binary_trees_cython,0.005191044807434042
+time_fannkuch_redux_cython,0.005849986076354931
+time_fasta_cython,0.010536918640136677
+time_hanoi_cython,0.1202872800827026
+time_knn_cython,0.004335379600524856
+time_K_Nucleotide_cython,0.01109014034271235
+time_mandelbrot_cython,0.16537662029266353
+time_nbody_cython,0.001387472152709914
+time_n_queens_cython,2.1432331943511964
+time_pi_digits_cython,0.010346794128417918
+time_regex_redux_cython,0.013061456680297798
+time_reverse_complement_cython,4.4345855712890627e-07
+time_sieve_cython,3.5104751586914065e-05
+time_spectral_norm_cython,7.867813110351562e-07
+time_strassen_cython,6.089210510253906e-06
