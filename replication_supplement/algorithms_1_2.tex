@@ -1,0 +1,49 @@
+% =========================
+% Algorithm 1: GreenScore
+% =========================
+\begin{algorithm}
+\caption{GreenScore computation}
+\label{alg:greenscore}
+\DontPrintSemicolon
+
+\KwIn{Measurement matrix $X \in \mathbb{R}^{R \times A}$, weights $w$}
+\KwOut{GreenScore $G$ and standard deviation SD}
+
+\ForEach{workload $i$}{
+    normalize $X[i,:]$ via min--max scaling (tie $\rightarrow 0.0$)\;
+}
+
+\ForEach{algorithm $j$}{
+    $G[j] \leftarrow \sum_i w_i N[i,j]$\;
+    $\mathrm{SD}[j] \leftarrow \mathrm{sd}(X[:,j])$\;
+}
+
+\Return{$G$, SD}\;
+\end{algorithm}
+
+
+% =========================
+% Algorithm 2: Statistics
+% =========================
+\begin{algorithm}
+\caption{Bootstrap CI and Friedman test}
+\label{alg:friedman}
+\DontPrintSemicolon
+
+\KwIn{Matrix $X$, replicates $B=5000$, seed=42}
+\KwOut{Confidence intervals and Friedman test}
+
+Set seed = 42\;
+
+Compute Friedman test using ranks over workloads\;
+
+\For{$b=1$ to $B$}{
+    resample algorithm columns of $X$\;
+    recompute GreenScore via Algorithm~\ref{alg:greenscore}\;
+    store $G^{(b)}$\;
+}
+
+Compute 95\% CI from percentiles of $\{G^{(b)}\}$\;
+
+\Return{CI, Friedman statistic, $p$-value}\;
+\end{algorithm}

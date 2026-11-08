@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{Fallback-mode GreenScore output on the Windows AMD laptop (\texttt{data/windows-amd-laptop}, deterministic CPU-time-derived TDP proxy, $E=0.84\times\mathrm{TDP}\times t_{\mathrm{CPU}}$, $R{=}50$). These values are diagnostic proxy outputs, not hardware energy measurements. Lower is better.}
+\label{tab:greenscore_windows}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method} & \textbf{Reported $S$} & $\bar{E}'$ & $\bar{C}'$ & $\bar{T}'$ \\
+\midrule
+\texttt{cython}      & 0.204 & 0.198 & 0.198 & 0.226 \\
+\texttt{ctypes}      & 0.341 & 0.337 & 0.365 & 0.304 \\
+\texttt{pypy}        & 0.435 & 0.460 & 0.419 & 0.414 \\
+\texttt{cpython}     & 0.505 & 0.483 & 0.513 & 0.534 \\
+\texttt{py\_compile} & 0.520 & 0.499 & 0.523 & 0.555 \\
+\bottomrule
+\end{tabular}
+\end{table}
